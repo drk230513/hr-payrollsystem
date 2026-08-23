@@ -1,9 +1,9 @@
-# HR & Payroll System — v0.3.0
+# HR & Payroll System — v0.4.1
 
 Everything in one place. Start with the install script.
 
 ```bash
-tar -xzf hr-payrollsystem-0.3.0.tar.gz
+tar -xzf hr-payrollsystem-0.4.1.tar.gz
 cd hr-payrollsystem
 chmod +x install.sh
 ./install.sh full
@@ -38,6 +38,8 @@ server/                 the multi-tenant payroll API
   src/auth.js             sessions, password verification, MFA gating
   src/payroll.js          engine + database + journal
   src/server.js           HTTP routes
+  src/connectors/         registry of accounting systems
+  src/connections.js      encrypted credentials, posting history
   stest.js e2e.js         56 + 27 tests against a real database
 
 database/               PostgreSQL schema
@@ -62,7 +64,8 @@ site/                   the public website
 | `packages/jtest.js` | accounting journal | 71 |
 | `server/stest.js` | tenancy, auth, isolation | 56 |
 | `server/e2e.js` | full payroll through the API | 27 |
-| | **total** | **312** |
+| `server/ctest.js` | connectors, encryption, double-post guard | 69 |
+| | **total** | **381** |
 
 The database suites need PostgreSQL running:
 

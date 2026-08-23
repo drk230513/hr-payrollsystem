@@ -2,12 +2,7 @@
    to prove the isolation actually holds, and a mock would only prove the test
    agrees with itself. */
 
-/* Connection settings come from the environment so the suite runs against a
-   local PostgreSQL or the container on 5433 without editing anything. */
-process.env.PGHOST = process.env.PGHOST || "127.0.0.1";
-process.env.PGPORT = process.env.PGPORT || "5432";
 process.env.PGUSER = process.env.PGUSER || "postgres";
-
 process.env.REGISTRY_DB = "hrp_registry";
 process.env.BASE_DOMAIN = "hr-payrollsystem.com";
 

@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.4.1
+
+- `e2e.js` hardcoded the database user, so it ignored `PGUSER` and failed
+  against any PostgreSQL not running as `postgres`. All three database suites
+  now read the environment the same way.
+
+## 0.4.0
+
+Accounting connectors — the framework, not yet the integrations.
+
+- Connector registry declaring Xero, Sage 50, Sage Business Cloud, QuickBooks
+  and manual export. Each states plainly whether it is available and, if not,
+  why. An unavailable connector cannot be reached by any route.
+- Credentials encrypted per tenant with AES-256-GCM. Disconnecting clears the
+  ciphertext rather than flagging the row.
+- **Double-post protection.** One live posting per run per provider, enforced
+  by a unique index. A repeat is refused and distinguishes "already sent,
+  unchanged" from "already sent, but the journal has since changed".
+- Superseding keeps the original posting for the audit trail.
+- OAuth state is single-use, expires in fifteen minutes, and supports PKCE.
+- Chart of accounts is overridable per tenant; the defaults are Sage-style
+  codes that suit almost nobody exactly.
+- The database refuses to record a posting that does not balance.
+
+Fixed:
+
+- Development and release layouts used different module paths, which is what
+  broke the server suites in 0.2.0. Both now use `packages/`.
+- A parameter served as both an enum value and a comparison, which PostgreSQL
+  could not type-infer.
+
 ## 0.3.0
 
 - The accounting journal is now visible in the demo: a Journal tab showing cost

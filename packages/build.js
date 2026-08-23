@@ -1,4 +1,9 @@
 const fs = require("fs");
+const path = require("path");
+// Read inputs beside this file and write the bundle to the project root, so the
+// build works the same from the development tree and from a release archive.
+process.chdir(__dirname);
+const OUT = path.join(__dirname, "..", "hr-payroll-system.html");
 const engine = fs.readFileSync("engine.js","utf8").replace(/if\(typeof module[\s\S]*$/,"");
 const autom  = fs.readFileSync("automation.js","utf8").replace(/if\(typeof module[\s\S]*$/,"");
 const jrnl   = fs.readFileSync("journal.js","utf8").replace(/if\(typeof module[\s\S]*$/,"");
@@ -76,5 +81,5 @@ ${app}
 </html>
 `;
 
-fs.writeFileSync("hr-payroll-system.html", html);
+fs.writeFileSync(OUT, html);
 console.log("built:", (html.length/1024).toFixed(1) + " KB");
