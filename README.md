@@ -1,9 +1,9 @@
-# HR & Payroll System — v0.2.0
+# HR & Payroll System — v0.3.0
 
 Everything in one place. Start with the install script.
 
 ```bash
-tar -xzf hr-payrollsystem-0.2.0.tar.gz
+tar -xzf hr-payrollsystem-0.3.0.tar.gz
 cd hr-payrollsystem
 chmod +x install.sh
 ./install.sh full
@@ -16,6 +16,7 @@ chmod +x install.sh
 | `./install.sh site` | Website and demo only. Nothing else touched. |
 | `./install.sh full` | Website, database and payroll API. |
 | `./install.sh test` | Runs the test suites. Changes nothing. |
+| `./install.sh testdb` | Creates the two databases the API tests need. |
 | `./install.sh status` | What is running, and whether the site responds. |
 
 ## What is in the box
@@ -58,16 +59,20 @@ site/                   the public website
 |---|---|---|
 | `packages/test.js` | calculation engine | 86 |
 | `packages/atest.js` | automation and cover mode | 72 |
-| `packages/jtest.js` | accounting journal | 62 |
+| `packages/jtest.js` | accounting journal | 71 |
 | `server/stest.js` | tenancy, auth, isolation | 56 |
 | `server/e2e.js` | full payroll through the API | 27 |
-| | **total** | **303** |
+| | **total** | **312** |
 
 The database suites need PostgreSQL running:
 
 ```bash
+./install.sh testdb            # once, to create the test databases
 RUN_DB_TESTS=1 ./install.sh test
 ```
+
+Connection settings are read from `site/deploy/.env`, so this works whether
+PostgreSQL is on 5432 or the container moved it to 5433.
 
 ## What works, and what does not
 

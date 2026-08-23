@@ -1,6 +1,7 @@
 const fs = require("fs");
 const engine = fs.readFileSync("engine.js","utf8").replace(/if\(typeof module[\s\S]*$/,"");
 const autom  = fs.readFileSync("automation.js","utf8").replace(/if\(typeof module[\s\S]*$/,"");
+const jrnl   = fs.readFileSync("journal.js","utf8").replace(/if\(typeof module[\s\S]*$/,"");
 const app    = fs.readFileSync("app.js","utf8");
 const css    = fs.readFileSync("app.css","utf8");
 
@@ -38,6 +39,7 @@ ${css}
       <button class="tab" data-view="payslips">Payslips</button>
       <button class="tab" data-view="pensions">Pensions</button>
       <button class="tab" data-view="automation">Automation</button>
+      <button class="tab" data-view="journal">Journal</button>
       <button class="tab" data-view="integrations">Integrations</button>
       <button class="tab" data-view="settings">Settings</button>
     </div>
@@ -67,6 +69,7 @@ ${css}
 ${engine}
 ${engineExports}
 ${autom}
+${jrnl}
 ${app}
 </script>
 </body>

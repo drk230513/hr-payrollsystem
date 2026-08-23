@@ -152,6 +152,35 @@ const jn = J.buildJournal({ run:nilRun.run, payslips:nilRun.payslips, employees:
 ok("a zero-pay employee produces no lines", jn.lines.length === 0 || jn.lines.every(l => l.debit > 0 || l.credit > 0));
 ok("every line in a normal journal carries a value", j.lines.every(l => l.debit > 0 || l.credit > 0));
 
+console.log("\n--- a scheme not named 'pension' must still balance ---");
+// Regression: the journal used to identify pension deductions by matching the
+// word "pension" in the label, which double-counted any scheme named otherwise.
+const oddScheme = { id:"S9", name:"Enhanced scheme", basis:"total", method:"netPay",
+                    employeeRate:0.05, employerRate:0.08 };
+const oddSlips = many.map(e => E.calcPayslip({ employee:e, period:5, scheme:oddScheme }));
+const jodd = J.buildJournal({ run:{ period:5, payslips:oddSlips, exceptions:[], decisions:{} },
+                              payslips:oddSlips, employees:many, period:PERIOD, org:ORG });
+eq("balances with a scheme named 'Enhanced scheme'", jodd.difference, 0);
+ok("and the pension is not counted twice",
+   jodd.lines.filter(l=>l.code==="2230").reduce((s,l)=>s+l.credit,0) === 0);
+["Scheme A","Retirement plan","Group personal","Enhanced scheme","AVC"].forEach(nm => {
+  const s2 = { ...oddScheme, name:nm };
+  const sl = many.map(e => E.calcPayslip({ employee:e, period:5, scheme:s2 }));
+  const jj = J.buildJournal({ run:{ period:5, payslips:sl, exceptions:[], decisions:{} },
+                              payslips:sl, employees:many, period:PERIOD, org:ORG });
+  eq("balances for a scheme called " + JSON.stringify(nm), jj.difference, 0);
+});
+
+console.log("\n--- other deductions are still captured ---");
+const withUnion = many.map(e => E.calcPayslip({
+  employee:{ ...e, otherDeductions:[{ label:"Union subscription", amount:16.90 }] },
+  period:5, scheme:oddScheme }));
+const junion = J.buildJournal({ run:{ period:5, payslips:withUnion, exceptions:[], decisions:{} },
+                                payslips:withUnion, employees:many, period:PERIOD, org:ORG });
+ok("still balances", junion.balanced);
+eq("union subscriptions posted separately",
+   junion.lines.filter(l=>l.code==="2230").reduce((s,l)=>s+l.credit,0), E.p2(16.90 * many.length));
+
 console.log("\n--- export formats ---");
 const csv = J.journalToCSV(j);
 ok("CSV has the expected header", csv.startsWith("Date,Reference,Account code,Account,Cost centre"));

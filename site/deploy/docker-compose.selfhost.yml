@@ -54,7 +54,7 @@ services:
     # node's address on that interface when you set up the standby, otherwise
     # Docker fails with "cannot assign requested address".
     ports:
-      - "${QSFP_IP}:5433:5432"
+      - "${QSFP_IP}:5432:5432"
 
   web:
     image: nginx:1.27-alpine

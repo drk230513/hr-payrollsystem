@@ -441,7 +441,8 @@ function render(){
   const views = {
     dashboard: viewDashboard, employees: viewEmployees, payroll: viewPayroll,
     leave: viewLeave, payslips: viewPayslips, pensions: viewPensions,
-    automation: viewAutomation, integrations: viewIntegrations, settings: viewSettings
+    automation: viewAutomation, journal: viewJournal,
+    integrations: viewIntegrations, settings: viewSettings
   };
   try {
     el.innerHTML = (views[VIEW] || views.dashboard)();
@@ -506,6 +507,7 @@ function viewDashboard(){
   <div class="ledger">
     ${!run ? actionRow("Run " + period.label + " payroll", "Calculate gross to net for " + active.length + " employees, review exceptions, then commit.", "payroll", "Open payroll") : ""}
     ${run && !run.committed ? actionRow("Review " + period.label, run.exceptions.filter(x => !run.decisions[x.ref]).length + " exceptions still need a decision before the run can be committed.", "payroll", "Continue review") : ""}
+    ${run && run.committed ? actionRow("Post " + period.label + " to your accounts", "The accounting journal is ready — " + money(run.totals.employerCost,0) + " of employment cost, balanced and exportable to Sage, Xero or CSV.", "journal", "View journal") : ""}
     ${run && run.committed ? actionRow(period.label + " is committed", "Payslips are available to employees. " + money(run.totals.net) + " net across " + run.payslips.length + " records.", "payslips", "View payslips") : ""}
     ${pending ? actionRow(pending + " leave request" + (pending>1?"s":"") + " awaiting approval", "Requests are not deducted from balances until approved.", "leave", "Review leave") : ""}
     ${!S.integrations.rti.credentialsSet ? actionRow("Connect HMRC, BACS and pensions", "Three external approvals stand between this system and paying people. The data for each is already produced.", "integrations", "Open integrations") : ""}
@@ -1215,6 +1217,107 @@ function reverseLogEntry(id){
 }
 
 
+
+/* ============================================================================
+   ACCOUNTING JOURNAL
+   ========================================================================== */
+function viewJournal(){
+  const committed = S.runs.filter(r => r.committed).sort((a,b) => b.period - a.period);
+  if(!committed.length){
+    return `
+    ${mast("Journal", "Accounting entries", [["Committed runs","0"],["Status","—"],["Tax year", S.config.taxYear]])}
+    <div class="panelbox">
+      <h3 style="margin:0 0 10px;font-family:var(--cond);font-size:16px;letter-spacing:.05em;text-transform:uppercase">Nothing to post yet</h3>
+      <p style="margin:0 0 16px;max-width:70ch;color:var(--ink2)">
+        The journal is produced from a committed payroll run. Commit a period and the accounting
+        entries appear here, ready to post to your finance system.</p>
+      <button class="btn primary" data-go="payroll">Go to payroll</button>
+    </div>
+    ${banner()}`;
+  }
+
+  const run = committed.find(r => r.period === journalPeriod) || committed[0];
+  journalPeriod = run.period;
+  const p = PERIODS[run.period - 1];
+
+  const j = buildJournalForRun(run, p);
+  const check = validateJournal(j);
+
+  return `
+  ${mast("Journal", "Accounting entries", [
+    ["Reference", j.reference],
+    ["Employer cost", money(j.totalDebit,0)],
+    ["Balanced", j.balanced ? "Yes" : "NO"]
+  ])}
+
+  <div class="sec-head"><h2>Period</h2>
+    <div class="row-tools">
+      <div class="field inline"><select id="jPeriod">
+        ${committed.map(r => `<option value="${r.period}" ${r.period===run.period?"selected":""}>${esc(PERIODS[r.period-1].label)}</option>`).join("")}
+      </select></div>
+      <button class="btn" data-jexp="csv">Download CSV</button>
+      <button class="btn" data-jexp="sage">Sage 50</button>
+      <button class="btn" data-jexp="xero">Xero</button>
+    </div>
+  </div>
+
+  <div class="flag ${j.balanced ? "ok" : "bad"}">
+    ${j.balanced
+      ? `<b>Balanced.</b> ${money(j.totalDebit)} of cost against ${money(j.totalCredit)} of liability, across ${j.employeesIncluded} employee${j.employeesIncluded===1?"":"s"}.${j.employeesHeld ? " " + j.employeesHeld + " held record(s) excluded — they were not paid." : ""}`
+      : `<b>Does not balance.</b> ${esc(check.problems.join("; "))}. This would be rejected by any accounting system.`}
+  </div>
+
+  <div class="sec-head" style="margin-top:26px"><h2>What employing people cost</h2><span class="eyebrow">Debits</span></div>
+  <div class="ledger">
+    <div class="lrow head"><span>Account</span><span>Cost centre</span><span></span><span></span><span>Amount</span></div>
+    ${j.lines.filter(l => l.debit > 0).map(l => `<div class="lrow">
+      <span><b>${esc(l.account)}</b><span class="r-sub">${esc(l.code)}</span></span>
+      <span class="m">${esc(l.costCentre || "—")}</span><span></span><span></span>
+      <span class="m">${money(l.debit)}</span></div>`).join("")}
+  </div>
+
+  <div class="sec-head"><h2>What is now owed</h2><span class="eyebrow">Credits</span></div>
+  <div class="ledger">
+    <div class="lrow head"><span>Account</span><span>To whom</span><span></span><span></span><span>Amount</span></div>
+    ${j.lines.filter(l => l.credit > 0).map(l => `<div class="lrow">
+      <span><b>${esc(l.account)}</b><span class="r-sub">${esc(l.code)}${l.note ? " · " + esc(l.note) : ""}</span></span>
+      <span class="m">${esc(l.costCentre || "—")}</span><span></span><span></span>
+      <span class="m">${money(l.credit)}</span></div>`).join("")}
+  </div>
+
+  <div class="counters" style="border-top:none;margin-top:18px">
+    ${counter(money(j.totalDebit), "Total debits")}
+    ${counter(money(j.totalCredit), "Total credits")}
+    ${counter(money(j.difference), "Difference")}
+    ${counter(String(j.employeesIncluded), "Employees posted")}
+  </div>
+
+  <div class="gov">
+    <span class="eyebrow">How to read this</span>
+    <p><strong>The two sides must be identical.</strong> The left is what employing people cost the
+    organisation this period — gross pay plus employer National Insurance plus employer pension.
+    The right is what the organisation now owes: to HMRC, to the pension provider, and to the
+    employees themselves. A journal that does not balance is rejected outright by every accounting system.</p>
+    <p>Employer National Insurance and employer pension appear as costs but are <strong>not</strong> owed to
+    the employee. They sit on top of gross pay, which is why the total cost exceeds the total gross.</p>
+  </div>
+  ${banner()}`;
+}
+
+var journalPeriod = null;
+
+function buildJournalForRun(run, p){
+  return buildJournal({
+    run,
+    payslips: run.payslips,
+    employees: S.employees,
+    period: { n: run.period, taxYear: S.config.taxYear, label: p.label,
+              start: p.start, end: p.end, payDate: p.payDate },
+    org: { shortName: S.employer.shortName },
+    options: {}
+  });
+}
+
 /* ============================================================================
    AUTOMATION
    ========================================================================== */
@@ -1893,6 +1996,21 @@ function bind(){
   if(addEl) addEl.addEventListener("click", payElementModal);
 
   on("[data-export]", "click", e => exportCSV(e.currentTarget.dataset.export));
+
+  const jp = document.getElementById("jPeriod");
+  if(jp) jp.addEventListener("change", () => { journalPeriod = +jp.value; render(); });
+
+  on("[data-jexp]", "click", e => {
+    const run = S.runs.find(r => r.committed && r.period === journalPeriod);
+    if(!run) return;
+    const p = PERIODS[run.period - 1];
+    const j = buildJournalForRun(run, p);
+    const fmt = e.currentTarget.dataset.jexp;
+    if(fmt === "csv")  return download(j.reference + ".csv", journalToCSV(j), "text/csv");
+    if(fmt === "sage") return download(j.reference + "-sage.csv", journalToSage(j), "text/csv");
+    if(fmt === "xero") return download(j.reference + "-xero.json",
+      JSON.stringify(journalToXero(j), null, 2), "application/json");
+  });
 
   on("[data-mode]", "click", e => {
     const m = e.currentTarget.dataset.mode;

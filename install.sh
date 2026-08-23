@@ -5,6 +5,7 @@
 #   ./install.sh site        just the public website (what you have today)
 #   ./install.sh full        website + database + payroll API
 #   ./install.sh test        run every test suite, change nothing
+#   ./install.sh testdb      create the two databases the API tests need
 #   ./install.sh status      what is running
 #
 # Safe to run more than once. Nothing is deleted; existing config is kept.
@@ -19,6 +20,36 @@ warn() { printf '    \033[33mnote\033[0m %s\n' "$1"; }
 die()  { printf '    \033[31mstop\033[0m %s\n' "$1"; exit 1; }
 
 VERSION=$(cat VERSION 2>/dev/null || echo "unknown")
+
+# --------------------------------------------------------------- helpers ----
+env_value() {
+  grep -E "^$1=" "$ROOT/site/deploy/.env" 2>/dev/null | head -1 | cut -d= -f2-
+}
+pg_port_from_compose() {
+  grep -oE '"\$\{QSFP_IP\}:[0-9]+:5432"' "$ROOT/site/deploy/docker-compose.selfhost.yml" 2>/dev/null \
+    | grep -oE ':[0-9]+:' | tr -d ':' | head -1
+}
+compose() { docker compose -f "$ROOT/site/deploy/docker-compose.selfhost.yml" "$@"; }
+
+# Creates the two databases the integration suites expect. Test fixtures only —
+# never run this against anything holding real payroll data.
+create_test_databases() {
+  say "Test databases"
+  local u; u=$(env_value POSTGRES_USER)
+  [ -n "$u" ] || die "no POSTGRES_USER in site/deploy/.env"
+  for d in hrp_acme_ltd hrp_rival_plc; do
+    if compose exec -T postgres psql -U "$u" -d postgres -tAc \
+         "SELECT 1 FROM pg_database WHERE datname='$d'" 2>/dev/null | grep -q 1; then
+      ok "$d already exists"
+    else
+      compose exec -T postgres psql -U "$u" -d postgres -q -c "CREATE DATABASE $d;" >/dev/null 2>&1 \
+        && ok "created $d" || { warn "could not create $d"; continue; }
+    fi
+    compose exec -T postgres psql -U "$u" -d "$d" -q < "$ROOT/database/02_tenant.sql" >/dev/null 2>&1 \
+      && ok "$d schema applied" || warn "$d schema may already be present"
+  done
+  warn "these hold test data only, and the suites TRUNCATE them on each run"
+}
 
 # ---------------------------------------------------------------- checks ----
 preflight() {
@@ -72,6 +103,21 @@ install_site() {
 install_database() {
   say "Database"
   cd "$ROOT/site/deploy"
+
+  # A native PostgreSQL, or another project's container, commonly already holds
+  # 5432. Detect it here rather than letting docker fail with a networking
+  # error that says nothing about the real cause.
+  local want; want=$(grep -oE '"\$\{QSFP_IP\}:[0-9]+:5432"' docker-compose.selfhost.yml | grep -oE ':[0-9]+:' | tr -d ':')
+  want=${want:-5432}
+  if ss -lntH 2>/dev/null | awk '{print $4}' | grep -qE "[:.]${want}\$"; then
+    warn "port ${want} is already in use on this machine"
+    local alt=$((want + 1))
+    while ss -lntH 2>/dev/null | awk '{print $4}' | grep -qE "[:.]${alt}\$"; do alt=$((alt + 1)); done
+    sed -i "s|\"\${QSFP_IP}:${want}:5432\"|\"\${QSFP_IP}:${alt}:5432\"|" docker-compose.selfhost.yml
+    ok "moved our postgres to ${alt} so it does not fight the existing one"
+    want=$alt
+  fi
+  export HRP_PGPORT="$want"
   docker compose -f docker-compose.selfhost.yml up -d postgres || die "could not start postgres"
 
   printf '    waiting for postgres'
@@ -130,7 +176,11 @@ run_tests() {
   if [ "${RUN_DB_TESTS:-0}" = "1" ]; then
     for t in stest e2e; do
       printf '    %-22s' "$t"
-      if out=$(cd "$ROOT/server" && node "$t.js" 2>&1); then
+      if out=$(cd "$ROOT/server" && \
+          PGPORT="${HRP_PGPORT:-$(pg_port_from_compose)}" \
+          PGUSER="$(env_value POSTGRES_USER)" \
+          PGPASSWORD="$(env_value POSTGRES_PASSWORD)" \
+          node "$t.js" 2>&1); then
         local n; n=$(echo "$out" | grep -oE '^  [0-9]+ passed' | grep -oE '[0-9]+' | head -1)
         printf '\033[32m%s passed\033[0m\n' "${n:-?}"; total=$((total + ${n:-0}))
       else
@@ -143,6 +193,9 @@ run_tests() {
   fi
 
   printf '\n    \033[1m%s assertions passed, %s suites failed\033[0m\n' "$total" "$failed"
+  [ "${RUN_DB_TESTS:-0}" = "1" ] && [ "$failed" -gt 0 ] && {
+    warn "database suites need a reachable postgres and the two test databases"
+    warn "create them with:  ./install.sh testdb"; }
   [ "$failed" -gt 0 ] && return 1 || return 0
 }
 
@@ -176,7 +229,8 @@ case "${1:-full}" in
       cat site/LAUNCH.md             what still has to happen before customers
 NEXT
           ;;
-  test)   run_tests ;;
+  test)   HRP_PGPORT=$(pg_port_from_compose); run_tests ;;
+  testdb) create_test_databases ;;
   status) show_status ;;
-  *) echo "usage: $0 {site|full|test|status}"; exit 1 ;;
+  *) echo "usage: $0 {site|full|test|testdb|status}"; exit 1 ;;
 esac

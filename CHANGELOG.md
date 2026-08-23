@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.3.0
+
+- The accounting journal is now visible in the demo: a Journal tab showing cost
+  and liability side by side, with CSV, Sage 50 and Xero export
+- Held records are excluded from the journal and the exclusion is shown
+
+Fixed:
+
+- The journal identified pension deductions by matching the word "pension" in
+  the label, so any scheme named otherwise was counted twice and the journal
+  did not balance. Categories are now derived arithmetically, which cannot be
+  fooled by what a customer names their scheme.
+
+## 0.2.1
+
+Packaging fixes. No change to the calculation engine or the API.
+
+- The server imported the engine and journal from the wrong path in the
+  release layout, so `stest.js` and `e2e.js` could not start at all
+- Test suites now honour `PGHOST`, `PGPORT`, `PGUSER` and `PGPASSWORD`
+  instead of assuming a local PostgreSQL on 5432
+- The installer detects a port collision on 5432 and moves our container
+  rather than failing with a docker networking error that hides the cause
+- New `./install.sh testdb` creates the two databases the API suites need
+
 ## 0.2.0
 
 Added the backend.

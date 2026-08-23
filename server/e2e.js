@@ -1,8 +1,11 @@
 /* End to end: seed a tenant, run payroll through the API, commit it, and pull
    the journal. Proves the engine, the database and the journal all agree. */
+/* Connection settings come from the environment so the suite runs against a
+   local PostgreSQL or the container on 5433 without editing anything. */
 process.env.PGHOST = process.env.PGHOST || "127.0.0.1";
 process.env.PGPORT = process.env.PGPORT || "5432";
 process.env.PGUSER = process.env.PGUSER || "postgres";
+
 process.env.REGISTRY_DB="hrp_registry"; process.env.BASE_DOMAIN="hr-payrollsystem.com";
 const http=require("http");
 const db=require("./src/db"), auth=require("./src/auth"), {createApp}=require("./src/server");

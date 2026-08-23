@@ -19,14 +19,14 @@
    a CSV a bookkeeper types in by hand. Only the delivery differs.
    ========================================================================== */
 
-const jp2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
+var jp2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
 
 /* ---------- chart of accounts -------------------------------------------
    Codes are defaults. Every organisation has its own chart, so these are
    overridable per tenant — a council's ledger looks nothing like a small
    company's, and posting to the wrong code is worse than not posting at all.
 ------------------------------------------------------------------------ */
-const DEFAULT_ACCOUNTS = {
+var DEFAULT_ACCOUNTS = {
   grossPay:          { code: "7000", name: "Gross wages and salaries",     type: "expense"  },
   employerNI:        { code: "7006", name: "Employer National Insurance",  type: "expense"  },
   employerPension:   { code: "7007", name: "Employer pension contributions", type: "expense" },
@@ -152,10 +152,20 @@ function buildJournal({ run, payslips, employees, schemes = [], period, org = {}
   };
 }
 
+/* Everything deducted that is not tax, NI, pension or a student loan — union
+   subscriptions, attachment of earnings orders, and so on.
+
+   Derived by subtraction rather than by inspecting deduction labels. An earlier
+   version matched the word "pension" in the label to identify pension lines,
+   which silently double-counted any scheme not named "pension" — a customer
+   calling theirs "Enhanced scheme" produced a journal that did not balance.
+   Arithmetic cannot be fooled by what someone names their scheme. */
 function otherDeductionsOn(ps){
-  return (ps.deductions || [])
-    .filter(d => !d.statutory && !/pension/i.test(d.label))
-    .reduce((s,d) => s + d.amount, 0);
+  const accounted = (ps.paye ? ps.paye.tax : 0)
+                  + (ps.ni ? ps.ni.employee : 0)
+                  + (ps.pension ? ps.pension.employee : 0)
+                  + (ps.studentLoan ? ps.studentLoan.total : 0);
+  return jp2((ps.totalDeductions || 0) - accounted);
 }
 
 function journalReference(period, org){
