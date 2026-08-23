@@ -82,7 +82,8 @@ await auth.ensureSessionTable();
 const R = db.registry();
 await R.query("DELETE FROM registry.sessions");
 await R.query("DELETE FROM registry.memberships");
-await R.query("DELETE FROM registry.audit_events");
+// Audit events are append-only by design, so they are never cleared. The
+// foreign keys are SET NULL, so removing users does not orphan them.
 await R.query("DELETE FROM registry.provisioning_jobs");
 await R.query("DELETE FROM registry.tenant_databases");
 await R.query("DELETE FROM registry.organisations");

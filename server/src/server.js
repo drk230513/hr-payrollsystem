@@ -20,6 +20,7 @@ const tenancy = require("./tenancy");
 const payroll = require("./payroll");
 const connectors = require("./connectors");
 const connections = require("./connections");
+const sso = require("./sso");
 const ENGINE = require("../../packages/engine.js");
 const JOURNAL = require("../../packages/journal.js");
 
@@ -40,7 +41,16 @@ function createApp({ baseDomain = process.env.BASE_DOMAIN || "hr-payrollsystem.c
 
   app.post("/api/auth/login", wrap(async (req, res) => {
     const { email, password } = req.body || {};
-    const result = await auth.verifyPassword(String(email || "").toLowerCase().trim(), password);
+    const address = String(email || "").toLowerCase().trim();
+
+    // An organisation that has switched on enforced SSO must not be reachable
+    // by password, or enforcing it achieves nothing.
+    if(!(await sso.passwordSignInPermitted(address))){
+      return res.status(403).json({ error: "sso_required",
+        detail: "Your organisation requires signing in with your work account." });
+    }
+
+    const result = await auth.verifyPassword(address, password);
     if(!result.ok){
       // One message for every failure. Distinguishing "no such user" from
       // "wrong password" hands an attacker a list of valid addresses.
@@ -145,6 +155,46 @@ function createApp({ baseDomain = process.env.BASE_DOMAIN || "hr-payrollsystem.c
       res.json(journal);
     }
   }));
+
+  /* ---------------- single sign-on ---------------- */
+
+  app.get("/api/auth/sso/status", wrap(async (req, res) => {
+    const c = sso.config();
+    const org = req.organisation ? await sso.settingsFor(req.organisation.id) : null;
+    res.json({
+      available: c.configured,
+      enabled: !!(org && org.enabled),
+      enforced: !!(org && org.enforce_sso),
+      domain: org ? org.tenant_domain : null
+    });
+  }));
+
+  app.get("/api/auth/sso/start", wrap(async (req, res) => {
+    const { url } = await sso.begin({
+      organisationId: req.organisation ? req.organisation.id : null,
+      redirectTo: req.query.next || "/"
+    });
+    res.json({ url });
+  }));
+
+  /* Binding a directory is an owner-level act: it decides who can sign in at
+     all, so it sits above ordinary settings management. */
+  app.put("/api/auth/sso/binding", ...tenantOnly,
+    tenancy.requireMembership("manage_users"), auth.requireMfa,
+    wrap(async (req, res) => {
+      const { entraTenantId, tenantDomain, allowJit, enforceSso } = req.body || {};
+      await sso.bind(req.organisation.id, {
+        entraTenantId, tenantDomain, allowJit: !!allowJit, enforceSso: !!enforceSso,
+        actor: req.user.email });
+      res.json({ ok: true, settings: await sso.settingsFor(req.organisation.id) });
+    }));
+
+  app.delete("/api/auth/sso/binding", ...tenantOnly,
+    tenancy.requireMembership("manage_users"), auth.requireMfa,
+    wrap(async (req, res) => {
+      await sso.unbind(req.organisation.id, req.user.email);
+      res.json({ ok: true });
+    }));
 
   /* ---------------- accounting connectors ---------------- */
 

@@ -65,9 +65,37 @@ CREATE INDEX organisations_status_idx ON organisations(status);
 -- Normalise before validating, so 'Acme-Ltd' is accepted and stored as 'acme-ltd'
 -- rather than rejected. Trimming and case-folding at the boundary means every
 -- downstream consumer sees one canonical form.
+-- Slugs become subdomains, so a customer registering 'www' or 'api' would
+-- shadow the marketing site or the API. Reserve them before anyone tries.
+CREATE TABLE reserved_slugs (
+    slug   citext PRIMARY KEY,
+    reason text NOT NULL
+);
+
+INSERT INTO reserved_slugs(slug, reason) VALUES
+    ('www','marketing site'), ('app','sign-in portal'), ('api','public API'),
+    ('admin','internal'), ('portal','internal'), ('status','status page'),
+    ('mail','email'), ('smtp','email'), ('imap','email'), ('mx','email'),
+    ('ftp','infrastructure'), ('ns','infrastructure'), ('cdn','infrastructure'),
+    ('static','assets'), ('assets','assets'), ('demo','public demo'),
+    ('help','support'), ('support','support'), ('docs','documentation'),
+    ('blog','marketing'), ('billing','internal'), ('account','internal'),
+    ('accounts','internal'), ('login','internal'), ('signup','internal'),
+    ('auth','internal'), ('sso','internal'), ('test','internal'),
+    ('staging','internal'), ('dev','internal'), ('internal','internal'),
+    ('security','legal page'), ('privacy','legal page'), ('terms','legal page'),
+    ('dpa','legal page'), ('hmrc','impersonation risk'), ('payroll','too generic'),
+    ('hr','too generic'), ('bacs','impersonation risk'), ('pension','too generic');
+
 CREATE OR REPLACE FUNCTION normalise_slug() RETURNS trigger AS $$
 BEGIN
     NEW.slug := lower(btrim(NEW.slug::text))::citext;
+
+    IF EXISTS (SELECT 1 FROM reserved_slugs WHERE slug = NEW.slug) THEN
+        RAISE EXCEPTION 'the name % is reserved, please choose another', NEW.slug
+            USING ERRCODE = 'check_violation';
+    END IF;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -189,8 +217,13 @@ CREATE INDEX provisioning_jobs_pending_idx ON provisioning_jobs(state, queued_at
 CREATE TABLE audit_events (
     id              bigserial PRIMARY KEY,
     at              timestamptz NOT NULL DEFAULT now(),
-    organisation_id uuid REFERENCES organisations(id),
-    actor_user_id   uuid REFERENCES users(id),
+    organisation_id uuid REFERENCES organisations(id) ON DELETE SET NULL,
+    -- SET NULL, not the default RESTRICT. A user must remain erasable under
+    -- UK GDPR, and an audit trail that prevents erasure is a compliance
+    -- problem rather than a control. The event survives; the link to the
+    -- person does not.
+    actor_user_id   uuid REFERENCES users(id) ON DELETE SET NULL,
+    actor_email     citext,
     actor_ip        inet,
     action          text NOT NULL,
     detail          jsonb NOT NULL DEFAULT '{}'::jsonb
@@ -241,8 +274,8 @@ BEGIN
     INSERT INTO provisioning_jobs(organisation_id, kind, target_version)
     VALUES (v_org, 'create_database', 1);
 
-    INSERT INTO audit_events(organisation_id, actor_user_id, action, detail)
-    VALUES (v_org, v_user, 'organisation.registered',
+    INSERT INTO audit_events(organisation_id, actor_user_id, actor_email, action, detail)
+    VALUES (v_org, v_user, p_owner_email, 'organisation.registered',
             jsonb_build_object('slug', p_slug, 'sector', p_sector));
 
     RETURN v_org;

@@ -1,9 +1,9 @@
-# HR & Payroll System — v0.4.1
+# HR & Payroll System — v0.5.0
 
 Everything in one place. Start with the install script.
 
 ```bash
-tar -xzf hr-payrollsystem-0.4.1.tar.gz
+tar -xzf hr-payrollsystem-0.5.0.tar.gz
 cd hr-payrollsystem
 chmod +x install.sh
 ./install.sh full
@@ -40,6 +40,7 @@ server/                 the multi-tenant payroll API
   src/server.js           HTTP routes
   src/connectors/         registry of accounting systems
   src/connections.js      encrypted credentials, posting history
+  src/sso.js              Microsoft Entra ID single sign-on
   stest.js e2e.js         56 + 27 tests against a real database
 
 database/               PostgreSQL schema
@@ -65,7 +66,8 @@ site/                   the public website
 | `server/stest.js` | tenancy, auth, isolation | 56 |
 | `server/e2e.js` | full payroll through the API | 27 |
 | `server/ctest.js` | connectors, encryption, double-post guard | 69 |
-| | **total** | **381** |
+| `server/ssotest.js` | Entra SSO, token validation, tenant binding | 54 |
+| | **total** | **435** |
 
 The database suites need PostgreSQL running:
 

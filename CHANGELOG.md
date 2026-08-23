@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.5.0
+
+Microsoft Entra ID single sign-on.
+
+- Multi-tenant OIDC with PKCE. Replaces the password step and nothing else —
+  tenancy, permissions, MFA gating and audit are unchanged after sign-in.
+- **An organisation is bound to one Entra directory**, and a token is accepted
+  only if its `tid` claim matches. Matching on email address instead would let
+  anyone who can create alice@acme.example in their own directory sign in to
+  Acme's payroll. The test suite performs exactly that attack and confirms it
+  is refused.
+- MFA is read from the token's `amr` claim, so it reflects how the person
+  actually authenticated rather than a flag we set ourselves.
+- Automatic user creation is off by default; when switched on, new accounts
+  get the least privileged role.
+- Enforced SSO closes the password route for that organisation.
+- Token validation rejects `alg: none`, HS256, wrong audience, non-Microsoft
+  issuers, an issuer disagreeing with its tenant claim, expiry, and nonce
+  mismatch.
+
+Fixed, and both were real:
+
+- The audit trail's foreign key used the default RESTRICT, so **a user with any
+  audit history could never be deleted** — which would have made UK GDPR
+  erasure impossible. Now SET NULL, with the email captured at the time so the
+  trail stays readable.
+- That change then collided with the append-only trigger, because SET NULL
+  performs an UPDATE. The trigger now permits exactly one thing — severing the
+  link to an erased person — and still refuses every attempt to alter what
+  happened, when, or by whom.
+
+Migration 4 applies both to the registry database.
+
 ## 0.4.1
 
 - `e2e.js` hardcoded the database user, so it ignored `PGUSER` and failed

@@ -3,3 +3,4 @@ pgdata/
 backups/
 node_modules/
 *.bak*
+.test-env
