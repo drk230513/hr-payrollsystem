@@ -94,7 +94,7 @@ ok("tampering is detected, not silently accepted", conn.decrypt(tampered, "tenan
 console.log("\n--- applying the connector migration ---");
 const T = db.tenant("hrp_acme_ltd");
 const fs = require("fs");
-const sql = fs.readFileSync(__dirname + "/../database/migrations/3_connectors.sql", "utf8");
+const sql = fs.readFileSync(__dirname + "/../database/migrations/tenant/3_connectors.sql", "utf8");
 await T.query(sql);
 ok("migration applied", true);
 await T.query(sql);

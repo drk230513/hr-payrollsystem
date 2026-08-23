@@ -174,7 +174,7 @@ run_tests() {
   done
 
   if [ "${RUN_DB_TESTS:-0}" = "1" ]; then
-    for t in stest e2e ctest ssotest; do
+    for t in stest e2e ctest ssotest otest; do
       printf '    %-22s' "$t"
       if out=$(cd "$ROOT/server" && \
           PGPORT="${HRP_PGPORT:-$(pg_port_from_compose)}" \

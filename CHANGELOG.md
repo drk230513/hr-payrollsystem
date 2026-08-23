@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.6.0
+
+Self-service onboarding. A company signs up with its name and ends up with its
+own database at its own subdomain.
+
+- Company name becomes a subdomain: "Northgate Logistics Ltd" gives
+  `northgate-logistics`. Reserved names are refused and alternatives offered.
+- Email verification, then **manual approval**. Handing someone a system that
+  holds their employees' bank details on the strength of a web form is not a
+  decision to automate away.
+- Provisioning creates the database and applies the schema and every tenant
+  migration. Idempotent, and a failure leaves the tenant in `failed` for a
+  person to look at rather than silently destroying a half-built database.
+- Owner invitation, password, MFA. The database refuses an owner without MFA,
+  so the membership is not accepted until it is enrolled.
+- Decommissioning keeps the data by default — payroll records must be kept six
+  years — and dropping a database requires typing the organisation's name.
+
+Fixed, all found by the tests:
+
+- Approval checked whether the slug was taken and counted the very request it
+  was approving, so no registration could ever be approved.
+- **Registry and tenant migrations were in one folder**, so a registry
+  migration was being applied to every new tenant database. They are now in
+  separate folders and a startup guard fails loudly if either is missing.
+- Onboarding never collected a PAYE reference, so the database correctly
+  refused to activate the organisation. It is collected at signup, and there
+  is now a route to supply it afterwards.
+
 ## 0.5.0
 
 Microsoft Entra ID single sign-on.

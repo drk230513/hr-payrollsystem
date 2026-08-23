@@ -74,10 +74,20 @@ async function withTransaction(pool, fn){
   }
 }
 
+/* Closing a single tenant's pool, so its database can be dropped. PostgreSQL
+   refuses to drop a database while a connection to it is open. */
+async function closeTenant(databaseName){
+  const pool = tenantPools.get(databaseName);
+  if(!pool) return false;
+  tenantPools.delete(databaseName);
+  await pool.end().catch(() => {});
+  return true;
+}
+
 async function closeAll(){
   const pools = [registryPool, ...tenantPools.values()];
   tenantPools.clear();
   await Promise.all(pools.map(p => p.end().catch(() => {})));
 }
 
-module.exports = { registry, tenant, withTransaction, closeAll, assertSafeDatabaseName, REGISTRY_DB };
+module.exports = { registry, tenant, withTransaction, closeTenant, closeAll, assertSafeDatabaseName, REGISTRY_DB };

@@ -85,6 +85,10 @@ await R.query("DELETE FROM registry.memberships");
 // Audit events are append-only by design, so they are never cleared. The
 // foreign keys are SET NULL, so removing users does not orphan them.
 await R.query("DELETE FROM registry.provisioning_jobs");
+// registration_requests references organisations with RESTRICT, so it has to
+// go first. That constraint is deliberate: a customer's record of how they
+// joined should not vanish because someone deleted the organisation.
+await R.query("DELETE FROM registry.registration_requests");
 await R.query("DELETE FROM registry.tenant_databases");
 await R.query("DELETE FROM registry.organisations");
 await R.query("DELETE FROM registry.users");

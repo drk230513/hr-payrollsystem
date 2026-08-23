@@ -21,6 +21,7 @@ const payroll = require("./payroll");
 const connectors = require("./connectors");
 const connections = require("./connections");
 const sso = require("./sso");
+const onboarding = require("./onboarding");
 const ENGINE = require("../../packages/engine.js");
 const JOURNAL = require("../../packages/journal.js");
 
@@ -154,6 +155,48 @@ function createApp({ baseDomain = process.env.BASE_DOMAIN || "hr-payrollsystem.c
     } else {
       res.json(journal);
     }
+  }));
+
+  /* ---------------- onboarding ---------------- */
+  /* Public. Rate limiting belongs in front of these in production — they are
+     the only unauthenticated endpoints that write. */
+
+  app.get("/api/signup/available", wrap(async (req, res) => {
+    const slug = onboarding.normaliseSlug(req.query.name || "");
+    if(!slug) return res.json({ available: false, reason: "that name cannot be used as a web address" });
+    const taken = await onboarding.slugTaken(slug);
+    res.json({
+      slug, available: !taken,
+      address: slug + "." + baseDomain,
+      suggestions: taken ? await onboarding.suggestSlugs(req.query.name) : []
+    });
+  }));
+
+  app.post("/api/signup", wrap(async (req, res) => {
+    const r = await onboarding.signUp(req.body || {});
+    // The token is emailed, never returned. Returning it would let anyone who
+    // can guess an address verify it themselves.
+    res.status(201).json({ ok: true, slug: r.slug, address: r.slug + "." + baseDomain,
+      next: "Check the inbox for a verification link." });
+  }));
+
+  app.get("/api/signup/verify", wrap(async (req, res) => {
+    const v = await onboarding.verifyEmail(req.query.token);
+    res.json({ ok: true, legalName: v.legal_name,
+      next: "Verified. We review each registration before creating the payroll environment." });
+  }));
+
+  app.get("/api/signup/status", wrap(async (req, res) => {
+    const s = await onboarding.statusOf(req.query.slug);
+    if(!s) return res.status(404).json({ error: "not_found" });
+    res.json({ slug: s.slug, organisation: s.org_status, database: s.db_status,
+      ready: s.org_status === "active" && s.db_status === "ready" });
+  }));
+
+  app.post("/api/signup/accept", wrap(async (req, res) => {
+    const { token, password } = req.body || {};
+    const a = await onboarding.acceptInvite(token, { password });
+    res.json({ ok: true, email: a.email, next: "Enrol multi-factor authentication to finish." });
   }));
 
   /* ---------------- single sign-on ---------------- */
