@@ -11,8 +11,8 @@
    all queried through their effective date ranges.
    ========================================================================== */
 
-const ENGINE  = require("../../engine.js");
-const JOURNAL = require("../../journal.js");
+const ENGINE  = require("../../packages/engine.js");
+const JOURNAL = require("../../packages/journal.js");
 const db = require("./db");
 
 /* ---------- read the workforce as it stood during the period ------------- */

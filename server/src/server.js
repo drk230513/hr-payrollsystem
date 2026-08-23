@@ -18,8 +18,8 @@ const db = require("./db");
 const auth = require("./auth");
 const tenancy = require("./tenancy");
 const payroll = require("./payroll");
-const ENGINE = require("../../engine.js");
-const JOURNAL = require("../../journal.js");
+const ENGINE = require("../../packages/engine.js");
+const JOURNAL = require("../../packages/journal.js");
 
 function createApp({ baseDomain = process.env.BASE_DOMAIN || "hr-payrollsystem.com" } = {}){
   const app = express();
