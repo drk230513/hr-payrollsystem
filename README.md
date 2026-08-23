@@ -1,0 +1,85 @@
+# HR & Payroll System — v0.2.0
+
+Everything in one place. Start with the install script.
+
+```bash
+tar -xzf hr-payrollsystem-0.2.0.tar.gz
+cd hr-payrollsystem
+chmod +x install.sh
+./install.sh full
+```
+
+## What each command does
+
+| Command | Effect |
+|---|---|
+| `./install.sh site` | Website and demo only. Nothing else touched. |
+| `./install.sh full` | Website, database and payroll API. |
+| `./install.sh test` | Runs the test suites. Changes nothing. |
+| `./install.sh status` | What is running, and whether the site responds. |
+
+## What is in the box
+
+```
+install.sh              one entry point for everything
+VERSION                 0.2.0
+
+packages/               the calculation libraries and their tests
+  engine.js               PAYE, NI, pensions, student loans, statutory pay, leave
+  automation.js           automation policy, delegation limits, cover mode
+  journal.js              payroll to double-entry accounting
+  test.js atest.js jtest.js
+  app.js app.css build.js builds the browser demo
+
+server/                 the multi-tenant payroll API
+  src/db.js               per-tenant connection pooling
+  src/tenancy.js          subdomain resolution and the membership check
+  src/auth.js             sessions, password verification, MFA gating
+  src/payroll.js          engine + database + journal
+  src/server.js           HTTP routes
+  stest.js e2e.js         56 + 27 tests against a real database
+
+database/               PostgreSQL schema
+  01_registry.sql         control plane: organisations, users, memberships
+  02_tenant.sql           one database per customer
+  provision.sh            create and migrate tenant databases
+
+site/                   the public website
+  index.html              landing page
+  demo/index.html         the interactive demo
+  privacy terms dpa security
+  deploy/                 docker compose, nginx, tunnel, runbook
+  LAUNCH.md               what must happen before taking customers
+```
+
+## Test counts
+
+| Suite | Covers | Assertions |
+|---|---|---|
+| `packages/test.js` | calculation engine | 86 |
+| `packages/atest.js` | automation and cover mode | 72 |
+| `packages/jtest.js` | accounting journal | 62 |
+| `server/stest.js` | tenancy, auth, isolation | 56 |
+| `server/e2e.js` | full payroll through the API | 27 |
+| | **total** | **303** |
+
+The database suites need PostgreSQL running:
+
+```bash
+RUN_DB_TESTS=1 ./install.sh test
+```
+
+## What works, and what does not
+
+**Working:** the website, the interactive demo, the calculation engine, the
+automation policy engine, the accounting journal, the multi-tenant database
+schema, and a payroll API with authentication and tenant isolation.
+
+**Not working yet:** there is no web interface for the payroll API. It has no
+screens, no signup flow, no password reset and no email. The demo runs in the
+browser and does not talk to the API.
+
+**Blocked on accreditation:** HMRC RTI submission needs software recognition.
+BACS payment needs a Service User Number. Neither is a development task.
+
+See `site/LAUNCH.md` for the full position.

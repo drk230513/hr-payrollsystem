@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data processing agreement — HR &amp; Payroll System</title>
+<meta name="robots" content="index,follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/legal.css">
+</head>
+<body>
+<nav><div class="nav-in">
+  <a class="wordmark" href="/">HR &amp; Payroll System</a>
+  <a class="back" href="/">Back to the site</a>
+</div></nav>
+<header class="doc"><div class="in">
+  <span class="eyebrow">Draft — for legal review</span>
+  <h1>Data processing agreement</h1>
+  <div class="updated">Last updated 22 August 2026</div>
+</div></header>
+<main><div class="in">
+<div class="notice stop">
+  <p>
+    <b>This is a draft for review, not an executable agreement.</b> A data processing agreement is a
+    contract with terms that Article 28 of the UK GDPR makes mandatory. Getting it wrong exposes both
+    parties to enforcement.
+  </p>
+  <p>
+    <b>Have a solicitor draft or review this before signing anything.</b> Public sector customers will
+    read it properly, and a template found online is a false economy when the subject is other people's
+    payroll records. This page exists so a solicitor starts from a structure rather than a blank page.
+  </p>
+</div>
+
+<h2>1. Roles</h2>
+<p>
+  The customer is the <b>controller</b> of their employees' personal data. Open Source AI Ltd is the
+  <b>processor</b>. The customer decides what is processed and why; we process it on their
+  instructions.
+</p>
+
+<h2>2. Subject matter and duration</h2>
+<table>
+  <tr><th>Item</th><th>Detail</th></tr>
+  <tr><td>Subject matter</td><td>Provision of HR and payroll software</td></tr>
+  <tr><td>Duration</td><td>The term of the customer agreement, plus any agreed retention period</td></tr>
+  <tr><td>Nature and purpose</td><td>Calculating pay, producing payslips, recording absence, preparing statutory submissions</td></tr>
+  <tr><td>Types of data</td><td>Name, address, date of birth, National Insurance number, tax code, salary and pay history, bank details, pension membership, absence records</td></tr>
+  <tr><td>Categories of individual</td><td>The customer's employees, workers, and former employees</td></tr>
+  <tr><td>Special category data</td><td>Health data may be present where sickness absence is recorded</td></tr>
+</table>
+
+<h2>3. Our obligations</h2>
+<p>Article 28(3) requires a processor to commit to each of the following. We will:</p>
+<ol>
+  <li>process personal data only on the customer's documented instructions, including on transfers
+      outside the UK, unless required otherwise by law — in which case we will tell the customer
+      first, unless the law forbids it;</li>
+  <li>ensure everyone authorised to process the data is under a duty of confidence;</li>
+  <li>take the security measures required by Article 32 — see <a href="/security">security</a>;</li>
+  <li>engage sub-processors only on the terms in section 4;</li>
+  <li>help the customer respond to requests from individuals exercising their rights;</li>
+  <li>help the customer with security, breach notification, impact assessments and consultation with
+      the ICO;</li>
+  <li>delete or return all personal data at the end of the agreement, as the customer chooses, unless
+      the law requires us to keep it;</li>
+  <li>make available the information needed to demonstrate compliance, and allow and contribute to
+      audits.</li>
+</ol>
+
+<h2>4. Sub-processors</h2>
+<p>
+  The customer gives general authorisation for the sub-processors listed below. We will give
+  <span class="fill">[notice period]</span> notice before adding or replacing one, and the customer may
+  object on reasonable data protection grounds.
+</p>
+<table>
+  <tr><th>Sub-processor</th><th>Purpose</th><th>Location</th></tr>
+  <tr><td><span class="fill">[Hosting provider]</span></td><td>Hosting the database and application</td><td>United Kingdom</td></tr>
+  <tr><td>Cloudflare, Inc.</td><td>Network delivery, TLS, protection against attack</td><td>Global, served from the UK</td></tr>
+</table>
+<p>
+  Each sub-processor is bound by terms no less protective than these. We remain fully liable for their
+  performance.
+</p>
+
+<h2>5. International transfers</h2>
+<p>
+  Customer payroll data is stored and processed in the <b>United Kingdom</b>. We will not transfer it
+  outside the UK without the customer's prior written agreement and an appropriate transfer mechanism.
+</p>
+<p>
+  This is a different position from enquiries sent through our website, which are handled by a US
+  provider — see the <a href="/privacy">privacy notice</a>.
+</p>
+
+<h2>6. Security</h2>
+<p>
+  The measures we apply are described on the <a href="/security">security page</a> and form part of
+  this agreement. In summary: a separate database per customer, encryption of bank details at column
+  level, separated database roles so the application cannot read bank details, append-only audit, and
+  separate per-customer backups.
+</p>
+
+<h2>7. Personal data breaches</h2>
+<p>
+  We will notify the customer <b>without undue delay and in any event within
+  <span class="fill">[24 / 48] hours</span></b> of becoming aware of a personal data breach affecting
+  their data, with the information the customer needs to meet their own 72-hour obligation to the ICO.
+</p>
+
+<h2>8. Assisting with individuals' rights</h2>
+<p>
+  If an individual contacts us directly, we will not respond on the customer's behalf. We will pass it
+  to the customer without undue delay and help them answer it.
+</p>
+
+<h2>9. Audit</h2>
+<p>
+  We will provide the information reasonably needed to demonstrate compliance and allow audits on
+  reasonable notice, no more than <span class="fill">[frequency]</span> a year unless required by a
+  regulator or following a breach.
+</p>
+
+<h2>10. Deletion and return</h2>
+<p>
+  On termination the customer may export their complete records. We will delete their data within
+  <span class="fill">[period]</span> of a written request, subject to any legal retention requirement.
+</p>
+<p>
+  Because each customer has their own database, deletion is a genuine removal rather than a flag on a
+  shared table.
+</p>
+
+<h2>11. Liability</h2>
+<p>
+  <span class="fill">[To be aligned with the terms of service. Take advice — data protection liability
+  between controller and processor does not follow ordinary commercial caps.]</span>
+</p>
+</div></main>
+<footer><div class="in">
+  <b>Open Source AI Ltd</b> · Registered in England and Wales, company number 16933778 ·
+  Registered office: United Kingdom<br>
+  <a href="/privacy">Privacy notice</a> · <a href="/terms">Terms of service</a> ·
+  <a href="/dpa">Data processing agreement</a> · <a href="/security">Security</a>
+</div></footer>
+</body>
+</html>

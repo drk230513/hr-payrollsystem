@@ -1,0 +1,105 @@
+# =============================================================================
+# SELF-HOSTED on the GB10 (ARM64)
+# -----------------------------------------------------------------------------
+# Differences from the cloud compose file, and why:
+#
+#  * platform: linux/arm64 pinned everywhere. The GB10 is Grace ARM, and a
+#    silently-pulled amd64 image either refuses to start or crawls under qemu.
+#
+#  * No published ports. Traffic arrives through a Cloudflare Tunnel, which
+#    dials OUT from the box. Nothing inbound is opened, your home IP is never
+#    published, and an ISP that blocks inbound 80 stops mattering.
+#
+#  * No certbot. Cloudflare terminates TLS at the edge.
+#
+#  * pgbouncer is commented out until you confirm an arm64 build. Run
+#    preflight.sh first; it checks exactly this.
+#
+#   docker compose -f docker-compose.selfhost.yml up -d
+# =============================================================================
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    platform: linux/arm64
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: hrp_registry
+      POSTGRES_INITDB_ARGS: "--locale=en_GB.UTF-8 --encoding=UTF8"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+      # Only the registry schema. Mounting the whole database/ folder would run
+      # 02_tenant.sql against hrp_registry too, because everything in
+      # docker-entrypoint-initdb.d executes against POSTGRES_DB. Tenant
+      # databases are created later by database/provision.sh.
+      - ../../database/01_registry.sql:/docker-entrypoint-initdb.d/01_registry.sql:ro
+    command: >
+      postgres
+      -c wal_level=replica
+      -c max_wal_senders=5
+      -c wal_keep_size=1GB
+      -c shared_buffers=8GB
+      -c effective_cache_size=48GB
+      -c work_mem=64MB
+      -c max_connections=200
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d hrp_registry"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Bound to a single address, never 0.0.0.0. Defaults to loopback so the
+    # stack starts before the QSFP link exists; change QSFP_IP in .env to this
+    # node's address on that interface when you set up the standby, otherwise
+    # Docker fails with "cannot assign requested address".
+    ports:
+      - "${QSFP_IP}:5433:5432"
+
+  web:
+    image: nginx:1.27-alpine
+    platform: linux/arm64
+    restart: unless-stopped
+    volumes:
+      - ./nginx.selfhost.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../:/usr/share/nginx/html:ro
+    expose:
+      - "8080"
+
+  # The only thing that talks to the outside world, and it dials out.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    platform: linux/arm64
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - web
+
+  backup:
+    image: postgres:16-alpine
+    platform: linux/arm64
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    entrypoint: >
+      sh -c 'while true; do
+        for db in $$(psql -h postgres -U ${POSTGRES_USER} -d postgres -tAc
+          "SELECT datname FROM pg_database WHERE datname LIKE '\''hrp_%'\''"); do
+          pg_dump -h postgres -U ${POSTGRES_USER} -Fc "$$db"
+            > "/backups/$${db}_$$(date +%Y%m%d_%H%M).dump";
+        done;
+        find /backups -name "*.dump" -mtime +30 -delete;
+        sleep 86400;
+      done'
+
+  # pgbouncer: verify an arm64 build exists before enabling. preflight.sh checks.
+  # pgbouncer:
+  #   image: bitnami/pgbouncer:latest
+  #   platform: linux/arm64
+  #   environment:
+  #     POSTGRESQL_HOST: postgres
+  #     PGBOUNCER_POOL_MODE: transaction

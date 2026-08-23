@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security — HR &amp; Payroll System</title>
+<meta name="robots" content="index,follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/legal.css">
+</head>
+<body>
+<nav><div class="nav-in">
+  <a class="wordmark" href="/">HR &amp; Payroll System</a>
+  <a class="back" href="/">Back to the site</a>
+</div></nav>
+<header class="doc"><div class="in">
+  <span class="eyebrow">How the system is built</span>
+  <h1>Security</h1>
+  <div class="updated">Last updated 22 August 2026</div>
+</div></header>
+<main><div class="in">
+<div class="notice ok">
+  <p><b>Where things stand.</b> The calculation engine, assurance checks and database layer are built
+  and tested. Live HMRC submission and BACS payment await accreditation. This page describes how the
+  system is designed, and is written to be handed to a security reviewer.</p>
+</div>
+
+<h2>Where data lives</h2>
+<p>
+  <b>Every customer gets their own database.</b> Not a shared table with an organisation column — a
+  separate PostgreSQL database. A missing filter in application code cannot leak another company's
+  payroll, because the other company's tables are not reachable from that connection. PostgreSQL
+  refuses cross-database references outright.
+</p>
+<p>
+  This also makes several awkward things simple: restoring one customer without touching anyone else,
+  giving a customer a complete export, and erasing them on request.
+</p>
+<p>
+  Customer payroll data is held in the <b>United Kingdom</b>. The database schema itself refuses to
+  record any region outside the UK, so this is enforced rather than promised.
+</p>
+
+<h2>Encryption</h2>
+<ul>
+  <li>In transit: TLS 1.2 or 1.3 for anything crossing a network.</li>
+  <li>At rest: bank details and integration credentials are encrypted at column level.</li>
+  <li>Keys are held in a managed key service. Each customer has their own key, so one compromised key
+      exposes one customer.</li>
+  <li>Screens show only the last four digits of an account number. Full details are decrypted at one
+      point only: building a payment file.</li>
+</ul>
+
+<h2>Who can read what</h2>
+<p>Inside every customer database there are three database roles, not one:</p>
+<table>
+  <tr><th>Role</th><th>Can do</th><th>Cannot do</th></tr>
+  <tr><td>Application</td><td>Read and write payroll records</td><td><b>Read bank details</b></td></tr>
+  <tr><td>Payments</td><td>Read bank details, to build a payment file</td><td>Change anything</td></tr>
+  <tr><td>Reporting</td><td>Read payroll records</td><td>Write anything, or read bank details or credentials</td></tr>
+</table>
+<p>
+  The consequence worth noting: <b>a compromise of the web application does not yield a list of
+  employee bank accounts</b>, because the application has never been able to read them.
+</p>
+
+<h2>What the database refuses to do</h2>
+<p>
+  These are constraints and triggers in the database, so they hold even if application code is wrong:
+</p>
+<ul>
+  <li>A payroll run cannot be committed while any exception is undecided.</li>
+  <li>A committed payslip cannot be edited or deleted. Corrections create a new payslip that
+      supersedes the old one, which is how RTI expects them anyway.</li>
+  <li>A committed run must record the named person who committed it.</li>
+  <li>A payslip that does not balance cannot be stored.</li>
+  <li>Audit tables reject updates and deletions entirely.</li>
+  <li>Salary, tax code, NI category and bank records cannot overlap in time, so any historic payslip
+      can be reconstructed exactly.</li>
+</ul>
+
+<h2>Audit</h2>
+<p>
+  Every change is recorded with who, what, when, and the before and after values. Audit tables are
+  append-only at the database level — not by convention, by trigger. Records are retained for six
+  years to match payroll record-keeping requirements.
+</p>
+<p>
+  Where an automation rule makes a change, the rule is named as the actor and the change is reversible
+  from the log.
+</p>
+
+<h2>Automation limits</h2>
+<p>
+  Routine corrections can be automated. Four things cannot be, whatever an administrator selects,
+  because the limit is compiled into the software rather than left as a setting:
+</p>
+<ul>
+  <li>committing a payroll run</li>
+  <li>releasing a payment to someone recorded as a leaver</li>
+  <li>clearing a duplicate bank account</li>
+  <li>clearing negative net pay</li>
+</ul>
+<p>
+  No individual is scored, ranked or profiled. Nothing in the system constitutes an automated decision
+  with legal or similarly significant effect under Article 22 of the UK GDPR.
+</p>
+
+<h2>Access to our own systems</h2>
+<ul>
+  <li>Multi-factor authentication is required for any account that can approve a payroll run. This is
+      enforced by the database, not by policy.</li>
+  <li>One owner per organisation, and the role cannot be silently removed.</li>
+  <li>Administrative access is not exposed to the public internet.</li>
+</ul>
+
+<h2>Backups</h2>
+<p>
+  Each customer database is backed up separately every day and retained for 30 days, so one customer
+  can be restored without affecting another.
+</p>
+<div class="notice">
+  <p>
+    <b>We treat an untested restore as no backup at all.</b> Restores are performed to a separate
+    machine on a schedule to prove the backup can actually be used.
+  </p>
+</div>
+
+<h2>What is not finished</h2>
+<div class="notice stop">
+  <p>Stated plainly, because a reviewer will find these anyway:</p>
+  <ul>
+    <li><b>HMRC RTI submission</b> requires HMRC software recognition. In progress.</li>
+    <li><b>BACS payment submission</b> requires a Service User Number from a sponsoring bank. In progress.</li>
+    <li><b>Cyber Essentials</b> certification is not yet held.</li>
+    <li><b>Employee self-service</b> is not enabled pending row-level security within customer databases.</li>
+    <li>National Insurance numbers are not yet encrypted at column level, unlike bank details.</li>
+  </ul>
+</div>
+
+<h2>Reporting a vulnerability</h2>
+<p>
+  If you believe you have found a security problem, tell us through the enquiry form marked
+  "security". We will acknowledge within two working days. Please give us a reasonable period to fix
+  it before disclosing publicly. We will not pursue anyone who reports a genuine issue in good faith.
+</p>
+</div></main>
+<footer><div class="in">
+  <b>Open Source AI Ltd</b> · Registered in England and Wales, company number 16933778 ·
+  Registered office: United Kingdom<br>
+  <a href="/privacy">Privacy notice</a> · <a href="/terms">Terms of service</a> ·
+  <a href="/dpa">Data processing agreement</a> · <a href="/security">Security</a>
+</div></footer>
+</body>
+</html>

@@ -1,0 +1,101 @@
+# =============================================================================
+# hr-payrollsystem.com  ·  deployment
+# -----------------------------------------------------------------------------
+# Everything runs in a UK region. That is not a preference: the tenant schema
+# has a CHECK constraint refusing any region that is not uk-*, and the security
+# page tells customers their data is held in the UK.
+#
+#   docker compose up -d
+#   docker compose run --rm certbot   # first time only, to issue the certificate
+# =============================================================================
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: hrp_registry
+      # en_GB so ORDER BY on names sorts the way UK users expect
+      POSTGRES_INITDB_ARGS: "--locale=en_GB.UTF-8 --encoding=UTF8"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d hrp_registry"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Never expose Postgres to the internet. Reach it through the app or an
+    # SSH tunnel. A payroll database on a public port will be found.
+    expose:
+      - "5432"
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      DB_HOST: postgres
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 500
+      DEFAULT_POOL_SIZE: 20
+    expose:
+      - "5432"
+
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../:/usr/share/nginx/html:ro
+      - certs:/etc/letsencrypt
+      - acme:/var/www/certbot
+    depends_on:
+      - postgres
+
+  certbot:
+    image: certbot/certbot:latest
+    profiles: ["setup"]
+    volumes:
+      - certs:/etc/letsencrypt
+      - acme:/var/www/certbot
+    entrypoint: >
+      certbot certonly --webroot -w /var/www/certbot
+      -d hr-payrollsystem.com -d www.hr-payrollsystem.com
+      --email ${ADMIN_EMAIL} --agree-tos --no-eff-email
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    # Dumps every tenant database separately, so one customer can be restored
+    # without touching anyone else. An untested restore is not a backup —
+    # see LAUNCH.md for the weekly restore drill.
+    entrypoint: >
+      sh -c 'while true; do
+        for db in $$(psql -h postgres -U ${POSTGRES_USER} -d postgres -tAc
+          "SELECT datname FROM pg_database WHERE datname LIKE '\''hrp_%'\''"); do
+          pg_dump -h postgres -U ${POSTGRES_USER} -Fc "$$db"
+            > "/backups/$${db}_$$(date +%Y%m%d_%H%M).dump";
+        done;
+        find /backups -name "*.dump" -mtime +30 -delete;
+        sleep 86400;
+      done'
+
+volumes:
+  pgdata:
+  certs:
+  acme:
