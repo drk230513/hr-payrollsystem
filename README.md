@@ -1,9 +1,9 @@
-# HR & Payroll System — v0.7.0
+# HR & Payroll System — v0.7.1
 
 Everything in one place. Start with the install script.
 
 ```bash
-tar -xzf hr-payrollsystem-0.7.0.tar.gz
+tar -xzf hr-payrollsystem-0.7.1.tar.gz
 cd hr-payrollsystem
 chmod +x install.sh
 ./install.sh full
@@ -54,6 +54,7 @@ database/               PostgreSQL schema
 
 site/                   the public website
   index.html              landing page
+  config.example.js       copy to config.js — the installer will not overwrite it
   demo/index.html         the interactive demo
   privacy terms dpa security
   deploy/                 docker compose, nginx, tunnel, runbook

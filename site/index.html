@@ -192,6 +192,7 @@ footer{background:var(--card);border-top:1px solid var(--rule);padding:44px 0 52
 }
 </style>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script src="/config.js"></script>
 </head>
 <body>
 
@@ -204,8 +205,8 @@ footer{background:var(--card);border-top:1px solid var(--rule);padding:44px 0 52
       <a href="#engine">The engine</a>
       <a href="#sectors">Sectors</a>
       <a href="#cover">Cover</a>
+      <a href="#compliance">Compliance</a>
       <a href="#status">Status</a>
-      <a href="/demo">Try it</a>
       <a class="btn dark" href="#demo">Book a demo</a>
     </div>
   </div>
@@ -401,6 +402,125 @@ footer{background:var(--card);border-top:1px solid var(--rule);padding:44px 0 52
   </div>
 </section>
 
+<section class="band" id="compliance">
+  <div class="in reveal">
+    <span class="eyebrow">Built to the rules, not around them</span>
+    <h2>Every obligation, and the specific thing that meets it.</h2>
+    <p class="sec-lede">
+      Suppliers say "fully compliant" because it cannot be checked. Below is
+      each statutory requirement a UK payroll has to meet, and the particular
+      mechanism in the system that meets it — so it can be.
+    </p>
+
+    <div class="sec-head" style="margin-top:44px"><h2 style="font-size:16px">Payroll and employment law</h2></div>
+    <div class="ledger">
+      <div class="lrow">
+        <div><b>Employment Rights Act 1996, section 8</b>
+        <span class="note">Payslips itemise gross pay, every deduction with its purpose, and net pay. Where pay varies with hours, the hours are shown against the rate — required since April 2019.</span></div>
+        <span class="pill live">Met</span>
+      </div>
+      <div class="lrow">
+        <div><b>Working Time Regulations 1998</b>
+        <span class="note">5.6 weeks minimum leave, capped at 28 days for a five-day week. Entitlement below the statutory minimum is flagged rather than accepted.</span></div>
+        <span class="pill live">Met</span>
+      </div>
+      <div class="lrow">
+        <div><b><i>Harpur Trust v Brazel</i> and the 2024 accrual reforms</b>
+        <span class="note">Leave is held in hours, not days, so part-time, term-time and irregular-hours staff are calculated correctly rather than approximated.</span></div>
+        <span class="pill live">Met</span>
+      </div>
+      <div class="lrow">
+        <div><b>Pensions Act 2008 — automatic enrolment</b>
+        <span class="note">Assessed every pay period against the earnings trigger. Qualifying earnings are banded correctly rather than applied to the whole salary, which is where most systems differ.</span></div>
+        <span class="pill live">Met</span>
+      </div>
+    </div>
+
+    <div class="sec-head" style="margin-top:40px"><h2 style="font-size:16px">HMRC</h2></div>
+    <div class="ledger">
+      <div class="lrow">
+        <div><b>Real Time Information — FPS and EPS</b>
+        <span class="note">Generated as GovTalk XML and validated against HMRC's own published 2026-27 schemas, including the IRmark. Not against our reading of them — against the schemas themselves.</span></div>
+        <span class="pill live">Built</span>
+      </div>
+      <div class="lrow">
+        <div><b>PAYE and National Insurance</b>
+        <span class="note">Cumulative and Week 1/Month 1 bases, Scottish and Welsh regimes, the annual directors' basis, student and postgraduate loans, and the 50% regulatory limit on K codes.</span></div>
+        <span class="pill live">Met</span>
+      </div>
+      <div class="lrow">
+        <div><b>Software recognition</b>
+        <span class="note">Required before any product may submit RTI. We are in the process; until it completes, submissions are prepared but not sent.</span></div>
+        <span class="pill wait">In progress</span>
+      </div>
+    </div>
+
+    <div class="sec-head" style="margin-top:40px"><h2 style="font-size:16px">Data protection</h2></div>
+    <div class="ledger">
+      <div class="lrow">
+        <div><b>Registered with the Information Commissioner's Office</b>
+        <span class="note">Reference ICO:00013386321.</span></div>
+        <span class="pill live">Met</span>
+      </div>
+      <div class="lrow">
+        <div><b>UK data residency</b>
+        <span class="note">Customer payroll data is held in the United Kingdom. The database schema refuses to record any other region, so it is enforced rather than promised.</span></div>
+        <span class="pill live">Met</span>
+      </div>
+      <div class="lrow">
+        <div><b>UK GDPR Article 5 — integrity and confidentiality</b>
+        <span class="note">A separate database per customer, bank details encrypted at column level, and database roles arranged so the application itself cannot read them.</span></div>
+        <span class="pill live">Met</span>
+      </div>
+      <div class="lrow">
+        <div><b>UK GDPR Article 17 — erasure</b>
+        <span class="note">A person can be erased without breaking the audit trail. The event survives; the link to the individual does not.</span></div>
+        <span class="pill live">Met</span>
+      </div>
+      <div class="lrow">
+        <div><b>UK GDPR Article 22 — automated decisions</b>
+        <span class="note">No individual is scored, ranked or profiled, and no automated process determines anyone's pay. A named person approves every run before payment.</span></div>
+        <span class="pill live">Met</span>
+      </div>
+      <div class="lrow">
+        <div><b>Article 28 — processor obligations</b>
+        <span class="note">A data processing agreement covering all eight mandatory terms. In draft pending legal review, and we will say so rather than imply otherwise.</span></div>
+        <span class="pill wait">In draft</span>
+      </div>
+    </div>
+
+    <div class="sec-head" style="margin-top:40px"><h2 style="font-size:16px">Records and accounting</h2></div>
+    <div class="ledger">
+      <div class="lrow">
+        <div><b>Six-year retention of payroll records</b>
+        <span class="note">Committed payslips cannot be edited or deleted — a correction supersedes rather than replaces. Audit tables reject updates and deletions at the database level, not by convention.</span></div>
+        <span class="pill live">Met</span>
+      </div>
+      <div class="lrow">
+        <div><b>Reconstructable history</b>
+        <span class="note">Salary, tax code, NI category and bank details are effective-dated with overlaps made impossible, so any historic payslip can be re-derived exactly.</span></div>
+        <span class="pill live">Met</span>
+      </div>
+      <div class="lrow">
+        <div><b>FRS 102 section 28 and the CIPFA Code</b>
+        <span class="note">Untaken leave carried as an accrual, and a double-entry journal that must balance before it can be posted anywhere.</span></div>
+        <span class="pill live">Met</span>
+      </div>
+    </div>
+
+    <div class="card accent" style="margin-top:34px">
+      <h3>What we do not hold</h3>
+      <p>
+        <b>Cyber Essentials</b> and <b>ISO/IEC 27001</b> are not held. <b>HMRC software
+        recognition</b> and a <b>BACS Service User Number</b> are in progress. We would rather
+        you learned that here than in a security questionnaire three meetings in —
+        and a supplier who claims an accreditation they cannot evidence is a
+        supplier worth checking on everything else.
+      </p>
+    </div>
+  </div>
+</section>
+
 <section id="status">
   <div class="in reveal">
     <span class="eyebrow">Where we actually are</span>
@@ -535,7 +655,7 @@ footer{background:var(--card);border-top:1px solid var(--rule);padding:44px 0 52
         <input id="f-gotcha" name="_gotcha" type="text" tabindex="-1" autocomplete="off">
       </div>
       <div class="field wide">
-        <div class="cf-turnstile" data-sitekey="YOUR_TURNSTILE_SITE_KEY" data-theme="dark" data-callback="onTurnstile"></div>
+        <div id="turnstileMount"></div>
       </div>
       <div class="field wide"><button class="btn dark" type="submit" id="submitBtn">Request a demo</button></div>
       <p class="formnote">
@@ -574,9 +694,10 @@ footer{background:var(--card);border-top:1px solid var(--rule);padding:44px 0 52
       </div>
     </div>
     <div class="foot-note">
-      <b>Open Source AI Ltd</b> · Registered in England and Wales, company number <b>16933778</b> ·
-      Registered office: <b>United Kingdom</b><br>
-      ICO registration <b>ICO:00013386321</b> · Data hosted in the United Kingdom · Enquiries via the form above
+      <b>Open Source AI Ltd</b> · Registered in England and Wales, company number <b id="cfgCompanyNo">—</b> ·
+      Registered office: <b id="cfgOffice">—</b><br>
+      ICO registration <b id="cfgIco">—</b> · 
+      Data hosted in the United Kingdom · Enquiries via the form above
     </div>
   </div>
 </footer>
@@ -630,6 +751,14 @@ safely("gate", function(){
 });
 
 /* ---- automation mode toggle: the same run, three policies ---- */
+safely("footer", function(){
+  const c = (window.SITE_CONFIG || {}).company || {};
+  const set = (id, v) => { const el = document.getElementById(id); if(el && v) el.textContent = v; };
+  set("cfgCompanyNo", c.number);
+  set("cfgOffice", c.registeredOffice);
+  set("cfgIco", c.icoReference);
+});
+
 safely("modes", function(){
   const MODES = {
     manual: {
@@ -726,8 +855,23 @@ safely("reveals", function(){
    so the page never silently swallows an enquiry. */
 window.onTurnstile = function(){ /* token is placed in the hidden field automatically */ };
 
+/* The anti-spam widget only appears when a site key is configured. Rendering
+   it without one shows a permanent error and blocks the form. */
+safely("turnstile", function(){
+  const key = (window.SITE_CONFIG || {}).turnstileSiteKey;
+  const mount = document.getElementById("turnstileMount");
+  if(!mount || !key) return;
+  const w = document.createElement("div");
+  w.className = "cf-turnstile";
+  w.setAttribute("data-sitekey", key);
+  w.setAttribute("data-theme", "dark");
+  w.setAttribute("data-callback", "onTurnstile");
+  mount.appendChild(w);
+});
+
 safely("form", function(){
-  const FORM_ENDPOINT = "https://formspree.io/f/xljrvkrr";                      // e.g. "https://api.hr-payrollsystem.com/enquiries"
+  const CFG = (window.SITE_CONFIG || {});
+  const FORM_ENDPOINT = CFG.formEndpoint || "";                      // e.g. "https://api.hr-payrollsystem.com/enquiries"
 
   const form = document.getElementById("demoForm");
   const ok = document.getElementById("okMsg");

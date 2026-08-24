@@ -73,6 +73,17 @@ preflight() {
 # ------------------------------------------------------------------ site ----
 install_site() {
   say "Website"
+
+  # Site configuration is never shipped, only the example. Earlier versions had
+  # the form endpoint and site key edited into index.html, so every upgrade
+  # silently reverted them and the enquiry form stopped working.
+  if [ -f "$ROOT/site/config.js" ]; then
+    ok "site/config.js kept as it is"
+  else
+    cp "$ROOT/site/config.example.js" "$ROOT/site/config.js"
+    warn "created site/config.js — add your form endpoint and Turnstile key"
+  fi
+
   cd "$ROOT/site/deploy"
 
   [ -f .env ] || { cp .env.selfhost.example .env

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.7.1
+
+- **Site settings moved into `site/config.js`**, which the installer creates
+  once and never overwrites. The form endpoint, Turnstile key, company number,
+  registered office and ICO reference were previously edited into index.html,
+  so every upgrade reverted them and the enquiry form stopped working until
+  somebody noticed. This happened three times.
+- The anti-spam widget is now only rendered when a key is configured, instead
+  of showing a permanent error on a fresh install.
+- A **Compliance** section on the landing page: sixteen rows naming the
+  specific statute and the specific mechanism that meets it — ERA 1996 s.8,
+  the Working Time Regulations, *Harpur Trust v Brazel*, the Pensions Act,
+  UK GDPR Articles 5, 17 and 22, six-year retention, FRS 102 and the CIPFA
+  Code. What is not held is stated as plainly as what is.
+- ICO registration reference added to the footer and the privacy notice.
+
 ## 0.7.0
 
 HMRC Real Time Information. FPS and EPS generated as GovTalk XML and validated
