@@ -5,3 +5,4 @@ node_modules/
 *.bak*
 .test-env
 specs/
+site/config.js
