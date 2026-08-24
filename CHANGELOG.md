@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.7.0
+
+HMRC Real Time Information. FPS and EPS generated as GovTalk XML and validated
+against HMRC's own 2026-27 schemas.
+
+- Full Payment Submission covering starters, leavers, directors on the annual
+  NI basis, Scottish and Welsh tax regimes, emergency codes, student and
+  postgraduate loans, and the NI earnings bands
+- Employer Payment Summary covering statutory reclaims, NIC compensation, the
+  Employment Allowance, the Apprenticeship Levy, no-payment periods and
+  periods of inactivity
+- IRmark computed as a canonicalised SHA-1 digest with the mark removed
+- GovTalk envelope with the correct message classes
+- Input validation that names the employee causing each problem, so a
+  rejection is diagnosed before HMRC sees it
+
+Five things the schema required that would each have caused a rejection, and
+that were only found by validating against it:
+
+- **The PAYE reference is two fields.** 120/AB12345 splits into OfficeNo and
+  PayeRef; sending the whole string as either is invalid.
+- **The tax code is a code, a regime and a basis.** S1257L W1 is the code
+  1257L with a TaxRegime attribute of S and BasisNonCumulative of yes.
+- **StudentLoanRecovered needs a mandatory PlanType attribute**, and Plan 5
+  has no code in the 2026-27 enumeration.
+- **Four fields are whole pounds**, not pence: the student loan figures and
+  earnings at the Lower Earnings Limit.
+- **EPS element order differs from FPS.** RelatedTaxYear sits near the end,
+  and the no-payment flag and its dates are an inseparable pair.
+
+Also fixed: money formatting used toFixed alone, so 100.005 rounded down
+because it is held as 100.00499. It now matches the calculation engine.
+
+Submission still requires HMRC recognition and credentials.
+
 ## 0.6.0
 
 Self-service onboarding. A company signs up with its name and ends up with its

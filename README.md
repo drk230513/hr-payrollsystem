@@ -1,9 +1,9 @@
-# HR & Payroll System — v0.6.0
+# HR & Payroll System — v0.7.0
 
 Everything in one place. Start with the install script.
 
 ```bash
-tar -xzf hr-payrollsystem-0.6.0.tar.gz
+tar -xzf hr-payrollsystem-0.7.0.tar.gz
 cd hr-payrollsystem
 chmod +x install.sh
 ./install.sh full
@@ -29,6 +29,7 @@ packages/               the calculation libraries and their tests
   engine.js               PAYE, NI, pensions, student loans, statutory pay, leave
   automation.js           automation policy, delegation limits, cover mode
   journal.js              payroll to double-entry accounting
+  rti.js                  HMRC FPS and EPS as GovTalk XML
   test.js atest.js jtest.js
   app.js app.css build.js builds the browser demo
 
@@ -71,7 +72,8 @@ site/                   the public website
 | `server/ctest.js` | connectors, encryption, double-post guard | 69 |
 | `server/ssotest.js` | Entra SSO, token validation, tenant binding | 54 |
 | `server/otest.js` | signup, provisioning, invitation, decommission | 67 |
-| | **total** | **502** |
+| `packages/rtest.js` | RTI FPS and EPS, validated against HMRC's schemas | 103 |
+| | **total** | **605** |
 
 The database suites need PostgreSQL running:
 
@@ -97,3 +99,18 @@ browser and does not talk to the API.
 BACS payment needs a Service User Number. Neither is a development task.
 
 See `site/LAUNCH.md` for the full position.
+
+
+## HMRC schema validation
+
+`packages/rtest.js` validates every generated document against HMRC's own
+schemas. Those schemas are HMRC's and are not redistributed here — download
+them from GOV.UK and place them in `specs/`:
+
+```
+specs/FullPaymentSubmission-2027-v1-0.xsd
+specs/EmployerPaymentSummary-2027-v1-0.xsd
+```
+
+Requires `pip install xmlschema`. Without them the suite still runs and simply
+reports that schema validation was skipped.
