@@ -21,7 +21,21 @@ function installDownloadCapture(w){
   w.HTMLAnchorElement.prototype.click = function(){};
 }
 
-const html = fs.readFileSync("hr-payroll-system.html","utf8");
+/* The built demo sits at the project root, one level above this file. Resolve
+   it relative to the script rather than the working directory, so the suite
+   runs the same whether invoked from the root or from packages/. */
+const path = require("path");
+const BUILT = [
+  path.join(__dirname, "..", "hr-payroll-system.html"),
+  path.join(__dirname, "hr-payroll-system.html"),
+  path.join(__dirname, "..", "site", "demo", "index.html")
+].find(p => fs.existsSync(p));
+
+if(!BUILT){
+  console.error("\n  The built demo was not found. Run:  node packages/build.js\n");
+  process.exit(1);
+}
+const html = fs.readFileSync(BUILT, "utf8");
 const errors = [];
 const dom = new JSDOM(html, {
   runScripts: "dangerously",

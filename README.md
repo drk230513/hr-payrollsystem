@@ -1,9 +1,9 @@
-# HR & Payroll System — v0.9.0
+# HR & Payroll System — v0.9.2
 
 Everything in one place. Start with the install script.
 
 ```bash
-tar -xzf hr-payrollsystem-0.9.0.tar.gz
+tar -xzf hr-payrollsystem-0.9.2.tar.gz
 cd hr-payrollsystem
 chmod +x install.sh
 ./install.sh full

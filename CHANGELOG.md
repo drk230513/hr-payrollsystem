@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.2
+
+- `itest.js` needs jsdom, which was never declared as a dependency anywhere —
+  it only ran where jsdom happened to be installed already. There is now a
+  `packages/package.json` declaring it, and the installer installs it before
+  running the suites.
+
+## 0.9.1
+
+- `itest.js` read the built demo relative to the working directory, so it only
+  ran from the project root and failed from `packages/`. It now resolves the
+  path relative to itself, and says what to run if the demo has not been built.
+- The browser suite is now included in `./install.sh test`, which it never was
+  — 249 assertions that were only running when invoked by hand.
+
 ## 0.9.0
 
 Occupational absence, group structure, working patterns and timesheets. Driven

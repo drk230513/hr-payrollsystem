@@ -173,7 +173,17 @@ run_tests() {
   command -v node >/dev/null 2>&1 || die "node is required to run tests"
   local total=0 failed=0
 
-  for t in test atest jtest rtest abstest; do
+  # itest drives the built demo through jsdom, which is the only test
+  # dependency in the project. Install it once rather than failing the suite.
+  if [ -d "$ROOT/packages" ] && [ ! -d "$ROOT/packages/node_modules/jsdom" ]; then
+    if command -v npm >/dev/null 2>&1; then
+      printf '    installing the browser test dependency...'
+      (cd "$ROOT/packages" && npm install --no-audit --no-fund >/dev/null 2>&1) \
+        && printf ' done\n' || printf ' failed\n'
+    fi
+  fi
+
+  for t in test atest jtest rtest abstest itest; do
     printf '    %-22s' "$t"
     if out=$(cd "$ROOT/packages" && node "$t.js" 2>&1); then
       local n; n=$(echo "$out" | grep -oE '^  [0-9]+ passed' | grep -oE '[0-9]+' | head -1)
