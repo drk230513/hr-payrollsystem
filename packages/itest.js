@@ -25,10 +25,13 @@ function installDownloadCapture(w){
    it relative to the script rather than the working directory, so the suite
    runs the same whether invoked from the root or from packages/. */
 const path = require("path");
+/* The shipped demo comes first. A build output at the project root is where
+   development happens; in a release the only copy is the one actually served,
+   and two copies is how one of them goes stale unnoticed. */
 const BUILT = [
+  path.join(__dirname, "..", "site", "demo", "index.html"),
   path.join(__dirname, "..", "hr-payroll-system.html"),
-  path.join(__dirname, "hr-payroll-system.html"),
-  path.join(__dirname, "..", "site", "demo", "index.html")
+  path.join(__dirname, "hr-payroll-system.html")
 ].find(p => fs.existsSync(p));
 
 if(!BUILT){
@@ -56,7 +59,7 @@ ok("localStorage persisted state", !!w.localStorage.getItem("hrp:state"));
 
 console.log("\n--- navigation ---");
 const tabs = [...d.querySelectorAll(".tab")];
-eq("all views have tabs", tabs.length, 10);
+eq("all views have tabs", tabs.length, 11);
 
 // Marker-based, not length-based. `el.innerHTML = view()` leaves the PREVIOUS
 // view in place when view() throws, so a length check passes on a broken screen.
@@ -64,6 +67,7 @@ const MARKERS = {
   dashboard:"Next steps", employees:"All employees", payroll:"Pay period",
   leave:"Request time off", payslips:"Pay documents", pensions:"Contribution comparison",
   automation:"How much runs itself", integrations:"Real Time Information", settings:"Organisation",
+  absence:"Occupational pay",
   // Present whether or not a run has been committed, so it tests rendering
   // rather than the presence of data.
   journal:"Accounting entries"
@@ -588,6 +592,55 @@ eq("the amount is calculated from hours and rate", amt.value, "180.00");
 rate.value = "15.00"; rate.dispatchEvent(new w.Event("input",{bubbles:true}));
 eq("and recalculates when the rate changes", amt.value, "187.50");
 
+console.log("\n--- occupational absence in the demo ---");
+w.S = w.seedState("private"); w.save();
+d.querySelector('[data-view="absence"]').dispatchEvent(new w.Event("click",{bubbles:true}));
+let atext = d.getElementById("app").textContent.replace(/\s+/g," ");
+ok("the absence view renders", !atext.includes("Something went wrong"));
+ok("schemes are listed", atext.includes("Occupational sick pay"));
+ok("service bands shown", atext.includes("5 years or more"));
+ok("explains entitlement is consumed, not reset", atext.includes("consumed, not reset"));
+ok("explains occupational pay is inclusive of statutory", atext.includes("inclusive of statutory"));
+
+const consumed = w.ABSENCE.entitlementFor({
+  employee: { ...w.S.employees[2], startedOn: w.S.employees[2].startDate },
+  scheme: w.S.absenceSchemes[0], absenceStart:"2026-08-10",
+  history: w.S.absences.filter(x => x.employeeId === w.S.employees[2].id && x.id === "ABS-1") });
+eq("55 days already used", consumed.fullDaysUsed, 55);
+eq("so 10 remain at full pay", consumed.fullDaysRemaining, 10);
+
+console.log("\n--- absence and leave reach the commit gate ---");
+w.S.currentPeriod = 5; w.S.runs = []; w.save();
+const gateRun = w.calculateRun(5);
+ok("absence raises an exception", gateRun.exceptions.some(x => x.kind === "absence"));
+ok("leave raises exceptions", gateRun.exceptions.some(x => x.kind === "leave"));
+ok("the half-pay drop is flagged",
+   gateRun.exceptions.some(x => x.title.includes("half rate")));
+ok("an unlawful entitlement is flagged as high severity",
+   gateRun.exceptions.some(x => x.title.includes("below the statutory") && x.severity === "high"));
+ok("expiring carry-over is flagged",
+   gateRun.exceptions.some(x => x.title.includes("about to expire")));
+
+console.log("\n--- leave schemes in the demo ---");
+d.querySelector('[data-view="leave"]').dispatchEvent(new w.Event("click",{bubbles:true}));
+const ltext = d.getElementById("app").textContent.replace(/\s+/g," ");
+ok("the leave view renders", !ltext.includes("Something went wrong"));
+ok("several schemes listed", ltext.includes("Leave schemes"));
+ok("irregular hours accrual explained", ltext.includes("12.07%"));
+ok("Harpur Trust cited", ltext.includes("Harpur Trust"));
+ok("a below-statutory scheme is marked", ltext.includes("below statutory"));
+ok("carried-over days are shown", ltext.includes("carried"));
+eq("statutory minimum for three days a week", w.LEAVE.statutoryMinimumDays(3), 16.8);
+
+console.log("\n--- the two engines do not overwrite each other ---");
+/* Both libraries define serviceMonthsAt and entitlementFor. Bundled into one
+   scope the second would silently replace the first, and the symptom would be
+   leave entitlement calculated by absence rules. */
+ok("ABSENCE and LEAVE are separate namespaces",
+   w.ABSENCE.entitlementFor !== w.LEAVE.entitlementFor);
+ok("and both still work",
+   typeof w.ABSENCE.assessAbsence === "function" && typeof w.LEAVE.balanceFor === "function");
+
 console.log("\n--- every button on every view, clicked ---");
 /* The bug this exists to catch: the P45 View button called openDoc(), which
    was never defined. Tests that called p45HTML() directly passed, because the
@@ -606,7 +659,7 @@ w.URL.revokeObjectURL = () => {};
 w.HTMLAnchorElement.prototype.click = function(){};
 w.open = () => ({ document:{ write(){}, close(){} }, focus(){}, print(){}, close(){} });
 
-const auditViews = ["dashboard","employees","payroll","leave","payslips",
+const auditViews = ["dashboard","employees","payroll","leave","absence","payslips",
                     "pensions","automation","journal","integrations","settings"];
 let clicked = 0;
 const brokenButtons = [];

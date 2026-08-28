@@ -95,6 +95,17 @@ const PROVIDERS = {
 };
 
 /* ---------- default state ------------------------------------------------- */
+/* Runs a block and swallows a failure rather than taking the whole screen
+   down with it. One broken section should not blank the page — the recovery
+   panel exists for corrupt state, not for a single calculation throwing. */
+function safely(label, fn){
+  try { return fn(); }
+  catch(err){
+    console.error("[" + label + "]", err && err.message);
+    return null;
+  }
+}
+
 function seedState(preset = "private"){
   const P = PRESETS[preset];
   const mk = o => Object.assign({
@@ -184,6 +195,63 @@ function seedState(preset = "private"){
     currentPeriod: 5,
     employees: people,
     leave: [],
+
+    /* Several named leave schemes rather than one entitlement per person,
+       because a real employer runs dozens. */
+    leaveSchemes: [
+      LEAVE.makeLeaveScheme({ id:"AL-STD", name:"Annual leave — standard",
+        entitlementWeeks:5.6, carryOverMaxDays:5, carryOverExpiresAfterMonths:3,
+        serviceIncrements:[{ afterMonths:60, extraDays:1 }, { afterMonths:120, extraDays:2 }] }),
+      LEAVE.makeLeaveScheme({ id:"AL-ENH", name:"Annual leave — enhanced",
+        entitlementDays:25, bankHolidaysIncluded:false, bankHolidayDays:8, carryOverMaxDays:5 }),
+      LEAVE.makeLeaveScheme({ id:"AL-CAS", name:"Annual leave — irregular hours",
+        accrual:"irregularHours", carryOverMaxDays:0 }),
+      LEAVE.makeLeaveScheme({ id:"VOL", name:"Volunteering days",
+        entitlementDays:2, countsTowardStatutory:false, carryOverMaxDays:0 }),
+      LEAVE.makeLeaveScheme({ id:"UNP", name:"Unpaid leave",
+        entitlementDays:0, paid:false, countsTowardStatutory:false }),
+      // Deliberately unlawful, so the assurance check has something to find.
+      LEAVE.makeLeaveScheme({ id:"AL-OLD", name:"Annual leave — legacy contract",
+        entitlementDays:20, carryOverMaxDays:0 })
+    ],
+    leaveMemberships: people.map((e, i) => ({
+      employeeId: e.id,
+      schemeId: i === 3 ? "AL-OLD" : i === 6 ? "AL-CAS" : i % 3 === 0 ? "AL-ENH" : "AL-STD"
+    })).concat(people.slice(0, 4).map(e => ({ employeeId: e.id, schemeId: "VOL" }))),
+    leaveYear: { starts:"2026-04-01", ends:"2027-03-31", label:"2026/27" },
+    leaveCarriedIn: { [people[1].id]: { "AL-STD": { hours: 22.5, expiresOn: "2026-09-15" } } },
+    hoursWorkedInYear: { [people[6].id]: 512 },
+
+    /* Occupational sick pay on top of SSP, with service bands. */
+    absenceSchemes: [
+      ABSENCE.makeScheme({ id:"OSP", name:"Occupational sick pay", kind:"sickness",
+        bands:[
+          { fromMonths:0,  fullWeeks:4,  halfWeeks:4,  label:"under 1 year" },
+          { fromMonths:12, fullWeeks:8,  halfWeeks:8,  label:"1 to 2 years" },
+          { fromMonths:24, fullWeeks:13, halfWeeks:13, label:"2 to 5 years" },
+          { fromMonths:60, fullWeeks:26, halfWeeks:26, label:"5 years or more" }
+        ] }),
+      ABSENCE.makeScheme({ id:"OMP", name:"Enhanced maternity pay", kind:"maternity",
+        windowType:"perOccurrence", windowMonths:0,
+        bands:[
+          { fromMonths:0,  fullWeeks:0, halfWeeks:0,  label:"under 1 year — statutory only" },
+          { fromMonths:12, fullWeeks:8, halfWeeks:18, label:"1 year or more" }
+        ] })
+    ],
+    absences: [
+      // Long spell earlier in the year, so entitlement is partly consumed.
+      /* Enough consumed earlier in the year that the current absence crosses
+         from full pay into half — the case worth seeing, because it is the one
+         an employee needs telling about before the payslip arrives. */
+      { id:"ABS-1", employeeId: people[2].id, schemeId:"OSP", kind:"sickness",
+        from:"2026-04-13", to:"2026-06-26", workingDays:55, fullPaidDays:55, halfPaidDays:0,
+        reason:"Surgery and recovery", statutoryPaid:0 },
+      // Current absence, which will cross from full pay into half.
+      { id:"ABS-2", employeeId: people[2].id, schemeId:"OSP", kind:"sickness",
+        from:"2026-08-10", to:"2026-08-28", workingDays:15, reason:"Ongoing", statutoryPaid:0 },
+      { id:"ABS-3", employeeId: people[5].id, schemeId:"OSP", kind:"sickness",
+        from:"2026-08-17", to:"2026-08-21", workingDays:5, reason:"Influenza", statutoryPaid:0 }
+    ],
     runs: []
   };
 }
@@ -192,7 +260,7 @@ function seedState(preset = "private"){
    Saved data from an earlier version is missing fields the current code
    expects. Upgrade it in place rather than crashing or silently wiping it.
 ------------------------------------------------------------------------- */
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 function migrate(old){
   if(!old || typeof old !== "object" || !Array.isArray(old.employees)) return null;
@@ -441,7 +509,7 @@ function render(){
   const views = {
     dashboard: viewDashboard, employees: viewEmployees, payroll: viewPayroll,
     leave: viewLeave, payslips: viewPayslips, pensions: viewPensions,
-    automation: viewAutomation, journal: viewJournal,
+    absence: viewAbsence, automation: viewAutomation, journal: viewJournal,
     integrations: viewIntegrations, settings: viewSettings
   };
   try {
@@ -635,6 +703,23 @@ function calculateRun(period){
 
   const exceptions = ENGINE.detectExceptions({
     payslips, employees, priorPayslips: priors, period: p, schemes: S.schemes, config: S.config
+  });
+
+  /* Absence and leave raise their own exceptions into the same gate. A payroll
+     run is not clear because the arithmetic worked — it is clear when nobody
+     is being paid something they should not be. */
+  safely("absence exceptions", function(){
+    exceptions.push(...ABSENCE.absenceExceptions({
+      employees, schemes: S.absenceSchemes || [], absences: S.absences || [],
+      period: { start: p.start, end: p.end }, config: S.config }));
+  });
+  safely("leave exceptions", function(){
+    exceptions.push(...LEAVE.leaveExceptions({
+      employees, schemes: S.leaveSchemes || [], memberships: S.leaveMemberships || [],
+      requests: (S.leave || []).map(r => ({ ...r, schemeId: r.schemeId ||
+        (S.leaveMemberships || []).find(m => m.employeeId === r.employeeId)?.schemeId })),
+      leaveYear: S.leaveYear || { starts:"2026-04-01", ends:"2027-03-31" },
+      carriedIn: S.leaveCarriedIn || {}, asAt: p.end }));
   });
 
   const totals = payslips.reduce((t, ps) => ({
@@ -835,6 +920,80 @@ function viewLeave(){
     ["Carry-over at risk", String(atRisk.length)],
     ["Leave year", "1 Apr 2026 – 31 Mar 2027"]
   ])}
+
+  <div class="sec-head"><h2>Leave schemes</h2>
+    <span class="eyebrow">${(S.leaveSchemes || []).length} schemes in use</span></div>
+  <div class="ledger">
+    <div class="lrow head"><span>Scheme</span><span>Entitlement</span><span>Carry-over</span><span>On it</span><span></span></div>
+    ${(S.leaveSchemes || []).map(s => {
+      const on = (S.leaveMemberships || []).filter(m => m.schemeId === s.id).length;
+      const ent = s.accrual === "irregularHours"
+        ? "12.07% of hours worked"
+        : (s.entitlementWeeks != null
+            ? s.entitlementWeeks + " weeks"
+            : s.entitlementDays + " days") +
+          (s.bankHolidaysIncluded ? " incl. bank holidays" : " plus " + s.bankHolidayDays + " bank holidays");
+      // Judged against 5.6 weeks only where the scheme counts toward it.
+      let unlawful = false;
+      safely("stat", () => {
+        if(s.countsTowardStatutory && s.accrual !== "irregularHours"){
+          const days = s.entitlementDays != null ? s.entitlementDays : s.entitlementWeeks * 5;
+          const bh = s.bankHolidaysIncluded ? 0 : s.bankHolidayDays;
+          unlawful = (days + bh) < LEAVE.statutoryMinimumDays(5);
+        }
+      });
+      return `<div class="lrow">
+        <div><b>${esc(s.name)}</b><span class="note">${esc(s.kind)}${s.paid ? "" : " · unpaid"}${
+          s.countsTowardStatutory ? "" : " · does not count toward the statutory minimum"}</span></div>
+        <span class="m">${esc(ent)}</span>
+        <span class="m">${s.carryOverMaxDays ? s.carryOverMaxDays + " days, " + s.carryOverExpiresAfterMonths + " months" : "none"}</span>
+        <span class="m">${on}</span>
+        <span>${unlawful ? '<span class="status st-pending">below statutory</span>' : ""}</span>
+      </div>`;
+    }).join("")}
+  </div>
+
+  <div class="sec-head" style="margin-top:34px"><h2>Entitlement by person</h2>
+    <span class="eyebrow">Held in hours, because a day is not a day</span></div>
+  <div class="ledger">
+    <div class="lrow head"><span>Employee</span><span>Scheme</span><span>Hours a day</span><span>Entitlement</span><span>Available</span></div>
+    ${activeEmployees().map(e => {
+      const m = (S.leaveMemberships || []).find(x => x.employeeId === e.id);
+      const scheme = (S.leaveSchemes || []).find(s => s.id === (m && m.schemeId));
+      if(!scheme) return "";
+      let b = null;
+      safely("balance", () => {
+        b = LEAVE.balanceFor({
+          employee: { ...e, startedOn: e.startDate }, scheme,
+          leaveYear: S.leaveYear || { starts:"2026-04-01", ends:"2027-03-31" },
+          requests: (S.leave || []).map(r => ({ ...r, schemeId: r.schemeId || scheme.id })),
+          carriedIn: (S.leaveCarriedIn || {})[e.id] ? (S.leaveCarriedIn[e.id][scheme.id]) : null,
+          hoursWorkedInYear: (S.hoursWorkedInYear || {})[e.id] || 0,
+          asAt: todayISO() });
+      });
+      if(!b) return "";
+      return `<div class="lrow">
+        <div><b>${esc(e.name)}</b><span class="note">${e.weeklyHours} hours over ${e.daysPerWeek} days</span></div>
+        <span class="m">${esc(scheme.name)}</span>
+        <span class="m">${b.hoursPerDay.toFixed(2)}</span>
+        <span class="m">${b.entitlement.entitlementHours.toFixed(1)} hrs</span>
+        <span class="m">${b.availableDays.toFixed(1)} days${
+          b.carriedRemainingHours > 0 ? " <span class='note'>+" +
+          (b.carriedRemainingHours / b.hoursPerDay).toFixed(1) + " carried</span>" : ""}</span>
+      </div>`;
+    }).join("")}
+  </div>
+
+  <div class="gov" style="margin-bottom:34px">
+    <span class="eyebrow">Why hours and not days</span>
+    <p>Two people on a five-day week, one contracted for 43.75 hours and one for 35, both take
+    "a day" and it costs them different amounts. Holding entitlement in days and converting at
+    the end is how part-time and compressed-hours staff end up short-changed.</p>
+    <p><strong>The statutory minimum is 5.6 weeks capped at 28 days</strong>, not 28 days for
+    everyone. Somebody working three days a week is entitled to 16.8 days, and the cap never
+    applies to them. Irregular-hours staff accrue <strong>12.07% of hours worked</strong>,
+    following <i>Harpur Trust v Brazel</i>.</p>
+  </div>
 
   <div class="sec-head"><h2>Request time off</h2></div>
   <div class="panelbox">
@@ -1324,6 +1483,126 @@ function reverseLogEntry(id){
 }
 
 
+
+
+/* ============================================================================
+   ABSENCE
+   ========================================================================== */
+function viewAbsence(){
+  const schemes = S.absenceSchemes || [];
+  const absences = S.absences || [];
+  const p = PERIODS[S.currentPeriod - 1];
+  const schemeBy = Object.fromEntries(schemes.map(s => [s.id, s]));
+
+  const assessed = absences.map(ab => {
+    const e = emp(ab.employeeId);
+    const scheme = schemeBy[ab.schemeId];
+    if(!e || !scheme) return null;
+    let r = null;
+    safely("assess", () => {
+      r = ABSENCE.assessAbsence({
+        employee: { ...e, startedOn: e.startDate },
+        scheme, absence: ab,
+        history: absences.filter(x => x.employeeId === ab.employeeId && x.id !== ab.id),
+        statutoryPaid: ab.statutoryPaid || 0 });
+    });
+    return r ? { ab, e, scheme, r } : null;
+  }).filter(Boolean);
+
+  const open = assessed.filter(x => !x.ab.to || x.ab.to >= p.start);
+  const cost = assessed.reduce((s,x) => s + x.r.grossOccupational, 0);
+
+  return `
+  ${mast("Absence", "Occupational pay", [
+    ["Open absences", String(open.length)],
+    ["Occupational cost", money(cost, 0)],
+    ["Schemes", String(schemes.length)]
+  ])}
+
+  <div class="sec-head"><h2>Schemes</h2><span class="eyebrow">Company pay above the statutory minimum</span></div>
+  <div class="ledger">
+    ${schemes.map(s => `<div class="lrow">
+      <div><b>${esc(s.name)}</b><span class="note">${esc(s.kind)} ·
+        ${s.windowType === "perOccurrence"
+          ? "each occurrence assessed on its own"
+          : "rolling " + s.windowMonths + " month window"} ·
+        ${s.offsetStatutory ? "inclusive of statutory pay" : "paid on top of statutory"}</span></div>
+      <span class="m">${s.bands.length} band${s.bands.length===1?"":"s"}</span>
+    </div>`).join("")}
+  </div>
+
+  <div class="sec-head" style="margin-top:34px"><h2>Service bands</h2></div>
+  ${schemes.map(s => `
+    <div class="panelbox" style="margin-bottom:16px">
+      <h3 style="margin:0 0 12px;font-family:var(--cond);font-size:15px;letter-spacing:.05em;text-transform:uppercase">${esc(s.name)}</h3>
+      <div class="ledger">
+        <div class="lrow head"><span>Service</span><span>Full pay</span><span></span><span></span><span>Half pay</span></div>
+        ${s.bands.map(b => `<div class="lrow">
+          <span>${esc(b.label)}</span>
+          <span class="m">${b.fullWeeks} week${b.fullWeeks===1?"":"s"}</span>
+          <span></span><span></span>
+          <span class="m">${b.halfWeeks} week${b.halfWeeks===1?"":"s"}</span>
+        </div>`).join("")}
+      </div>
+    </div>`).join("")}
+
+  <div class="sec-head"><h2>Current and recent absence</h2></div>
+  ${!assessed.length ? `<div class="panelbox"><p style="margin:0;color:var(--ink2)">Nobody is absent.</p></div>` : `
+  <div class="ledger">
+    <div class="lrow head"><span>Employee</span><span>Band</span><span>Full / half / unpaid</span><span>Occupational</span><span></span></div>
+    ${assessed.map(({ab,e,scheme,r}) => `<div class="lrow">
+      <div><b>${esc(e.name)}</b><span class="note">${esc(scheme.name)} ·
+        ${fmtD(ab.from)} to ${ab.to ? fmtD(ab.to) : "ongoing"} ·
+        ${r.workingDays} working day${r.workingDays===1?"":"s"}${ab.reason ? " · " + esc(ab.reason) : ""}</span></div>
+      <span class="m">${esc(r.band)}</span>
+      <span class="m">${r.daysAtFullPay} / ${r.daysAtHalfPay} / ${r.daysUnpaid}</span>
+      <span class="m">${money(r.grossOccupational)}</span>
+      <span>${r.daysUnpaid > 0
+        ? '<span class="status st-pending">entitlement used up</span>'
+        : r.daysAtHalfPay > 0
+          ? '<span class="status st-pending">dropped to half pay</span>'
+          : '<span class="status st-approved">full pay</span>'}</span>
+    </div>`).join("")}
+  </div>`}
+
+  <div class="sec-head" style="margin-top:34px"><h2>Entitlement remaining</h2>
+    <span class="eyebrow">Rolling twelve months</span></div>
+  <div class="ledger">
+    <div class="lrow head"><span>Employee</span><span>Band</span><span>Full pay left</span><span>Half pay left</span><span></span></div>
+    ${activeEmployees().map(e => {
+      const scheme = schemes[0];
+      if(!scheme) return "";
+      let ent = null;
+      safely("ent", () => {
+        ent = ABSENCE.entitlementFor({
+          employee: { ...e, startedOn: e.startDate }, scheme,
+          absenceStart: p.end,
+          history: absences.filter(x => x.employeeId === e.id) });
+      });
+      if(!ent) return "";
+      return `<div class="lrow">
+        <div><b>${esc(e.name)}</b><span class="note">${esc(e.jobTitle || "")}</span></div>
+        <span class="m">${esc(ent.band.label)}</span>
+        <span class="m">${ent.fullDaysRemaining} of ${ent.fullDaysEntitled} days</span>
+        <span class="m">${ent.halfDaysRemaining} of ${ent.halfDaysEntitled} days</span>
+        <span>${ent.exhausted ? '<span class="status st-pending">exhausted</span>' : ""}</span>
+      </div>`;
+    }).join("")}
+  </div>
+
+  <div class="gov">
+    <span class="eyebrow">How occupational sick pay works</span>
+    <p><strong>Entitlement is consumed, not reset.</strong> It is measured over the twelve months
+    before the first day of the absence, so time off in March reduces what is available in
+    October. Calculating from the start of the leave year instead is a common and expensive error.</p>
+    <p><strong>Occupational pay is inclusive of statutory pay, not on top of it.</strong> Full pay
+    means normal pay, of which SSP forms part. Paying both is an overpayment that has to be
+    recovered from the employee.</p>
+    <p><strong>Service is fixed at the start of the absence.</strong> Someone who passes five
+    years' service part-way through does not move up a band mid-absence.</p>
+  </div>
+  ${banner()}`;
+}
 
 /* ============================================================================
    ACCOUNTING JOURNAL

@@ -32,13 +32,13 @@
       rather than assuming a five-day week.
    ========================================================================== */
 
-const p2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
-const DAY = 86400000;
+var p2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
+var DAY = 86400000;
 
-const d = s => (s instanceof Date ? s : new Date(String(s) + "T00:00:00Z"));
-const iso = x => d(x).toISOString().slice(0, 10);
-const addDays = (s, n) => iso(new Date(d(s).getTime() + n * DAY));
-const daysBetween = (a, b) => Math.round((d(b) - d(a)) / DAY);
+var d = s => (s instanceof Date ? s : new Date(String(s) + "T00:00:00Z"));
+var iso = x => d(x).toISOString().slice(0, 10);
+var addDays = (s, n) => iso(new Date(d(s).getTime() + n * DAY));
+var daysBetween = (a, b) => Math.round((d(b) - d(a)) / DAY);
 
 /* ---------- scheme definition ------------------------------------------
    Bands are ordered by service. A scheme with no bands is unpaid, which is
@@ -62,7 +62,7 @@ function makeScheme({ id, name, kind = "sickness", bands = [],
 
 /* A few realistic starting points. Every organisation writes its own, so
    these are examples rather than defaults to rely on. */
-const EXAMPLE_SCHEMES = [
+var EXAMPLE_SCHEMES = [
   makeScheme({
     id: "OSP-STD", name: "Occupational sick pay — standard", kind: "sickness",
     bands: [

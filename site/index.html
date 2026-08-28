@@ -52,7 +52,17 @@ nav .btn:focus-visible{outline-color:#fff}
 .hero{background:var(--ink);color:#fff;padding:64px 0 0;overflow:hidden}
 .hero h1{font-family:var(--cond);font-weight:700;font-size:clamp(38px,7vw,78px);line-height:.98;letter-spacing:-.022em;margin:14px 0 0;max-width:17ch}
 .hero p.lede{font-size:clamp(16px,2vw,19px);color:#B7BDC7;max-width:56ch;margin:22px 0 0}
-.hero .cta-row{display:flex;gap:12px;flex-wrap:wrap;margin:30px 0 54px}
+.hero .proof{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:46px;
+  background:#2A303B;border:1px solid #2A303B}
+.proof-item{display:block;background:#1A1F27;padding:18px 20px;text-decoration:none;
+  transition:background .18s ease}
+.proof-item:hover{background:#212832}
+.proof-item b{display:block;font-family:var(--cond);font-size:13.5px;letter-spacing:.05em;
+  text-transform:uppercase;color:#fff;margin-bottom:7px}
+.proof-item span{display:block;font-size:13.5px;line-height:1.5;color:#98A0AE}
+@media (max-width:900px){.proof{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:560px){.proof{grid-template-columns:1fr}}
+.cta-row{display:flex;gap:12px;flex-wrap:wrap;margin:30px 0 54px}
 
 /* signature: the commit gate */
 .gate{border-top:1px solid #2A303B;padding:26px 0 34px}
@@ -111,7 +121,8 @@ h3{font-family:var(--cond);font-weight:700;font-size:17px;letter-spacing:.03em;m
 .lrow span.note{font-size:13.5px;color:var(--ink2);display:block;margin-top:3px;max-width:64ch}
 .pill{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;white-space:nowrap}
 .pill.live{background:var(--go-bg);color:var(--go)}
-.pill.wait{background:var(--med-bg);color:var(--med)}
+.pill.hold{background:#EFEAF6;color:#4A3A6B;border-color:#C9BCDE}
+    .pill.wait{background:var(--med-bg);color:var(--med)}
 
 /* modes */
 .modes{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--rule);background:var(--card);margin-top:40px}
@@ -205,6 +216,8 @@ footer{background:var(--card);border-top:1px solid var(--rule);padding:44px 0 52
       <a href="#engine">The engine</a>
       <a href="#sectors">Sectors</a>
       <a href="#cover">Cover</a>
+      <a href="#engine-depth">What is built</a>
+      <a href="#depth">Depth</a>
       <a href="#compliance">Compliance</a>
       <a href="#status">Status</a>
       <a class="btn dark" href="#demo">Book a demo</a>
@@ -225,6 +238,25 @@ footer{background:var(--card);border-top:1px solid var(--rule);padding:44px 0 52
     <div class="cta-row">
       <a class="btn dark" href="/demo">Try the working demo</a>
       <a class="btn" style="background:transparent;color:#fff;border-color:#3A4250" href="#demo">Book a walkthrough</a>
+    </div>
+
+    <div class="proof">
+      <a class="proof-item" href="/demo">
+        <b>Occupational sick pay</b>
+        <span>Full to half pay, on a rolling window. Flagged before the payslip, not after.</span>
+      </a>
+      <a class="proof-item" href="/demo">
+        <b>Leave held in hours</b>
+        <span>43.75 and 35 hours are not the same day. 12.07% accrual for irregular hours.</span>
+      </a>
+      <a class="proof-item" href="/demo">
+        <b>Accounts that balance</b>
+        <span>A double-entry journal, split by cost centre, exportable to Sage or Xero.</span>
+      </a>
+      <a class="proof-item" href="#depth">
+        <b>Checked, not claimed</b>
+        <span>Over a thousand automated tests. RTI validated against HMRC's own schemas.</span>
+      </a>
     </div>
   </div>
 
@@ -397,6 +429,218 @@ footer{background:var(--card);border-top:1px solid var(--rule);padding:44px 0 52
         These are capped in the software itself, not left to a setting — because BACS is effectively
         irrevocable, and recovering an overpayment from a low-paid worker is a union and reputational
         problem before it is a finance one.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section id="engine-depth">
+  <div class="in reveal">
+    <span class="eyebrow">What is actually built</span>
+    <h2>The awkward cases, and where each one stands.</h2>
+    <p class="sec-lede">
+      Payroll is easy until it isn't. Below is what the calculation engine handles, split
+      honestly into what you can click through today, what is built and tested but has no
+      screen yet, and what is waiting on somebody else. We would rather you knew which is
+      which before a demonstration than during one.
+    </p>
+
+    <div class="sec-head" style="margin-top:42px"><h2 style="font-size:16px">In the demo — try it now</h2></div>
+    <div class="ledger">
+      <div class="lrow">
+        <div><b>The assurance gate</b>
+        <span class="note">Try committing a run while an exception is still open. It refuses. The rule lives in the database, not in application code, so it cannot be worked around.</span></div>
+        <span class="pill live">Live</span>
+      </div>
+      <div class="lrow">
+        <div><b>Directors on the annual National Insurance basis</b>
+        <span class="note">Different arithmetic from everyone else, and a common source of year-end corrections.</span></div>
+        <span class="pill live">Live</span>
+      </div>
+      <div class="lrow">
+        <div><b>Leave held in hours, not days</b>
+        <span class="note">Someone on 43.75 hours and someone on 35 both take "a day". Holding days and converting later is how part-time staff end up short.</span></div>
+        <span class="pill live">Live</span>
+      </div>
+      <div class="lrow">
+        <div><b>Cover mode</b>
+        <span class="note">Your payroll lead is off. Automation rises, every remaining decision is explained in plain terms, and a delegated limit caps what one person can release alone.</span></div>
+        <span class="pill live">Live</span>
+      </div>
+      <div class="lrow">
+        <div><b>The accounting journal</b>
+        <span class="note">Every committed run produces a balanced double-entry journal, split by cost centre, exporting to CSV, Sage 50 or Xero.</span></div>
+        <span class="pill live">Live</span>
+      </div>
+      <div class="lrow">
+        <div><b>P45 for leavers</b>
+        <span class="note">Produced once the final pay is committed, because the year-to-date figures it carries are not final until then.</span></div>
+        <span class="pill live">Live</span>
+      </div>
+    </div>
+
+    <div class="sec-head" style="margin-top:40px"><h2 style="font-size:16px">Engine complete and tested — no screen yet</h2></div>
+    <div class="ledger">
+      <div class="lrow">
+        <div><b>Occupational sick pay and enhanced family leave</b>
+        <span class="note">Service bands, a rolling twelve-month window that consumes rather than resets, and statutory pay offset rather than added — the single most expensive occupational sick pay mistake.</span></div>
+        <span class="pill wait">Built, not yet on screen</span>
+      </div>
+      <div class="lrow">
+        <div><b>Named leave schemes</b>
+        <span class="note">Dozens of schemes, each with its own accrual, carry-over and bank holiday treatment. Irregular-hours staff accrue at 12.07% following <i>Harpur Trust v Brazel</i>.</span></div>
+        <span class="pill wait">Built, not yet on screen</span>
+      </div>
+      <div class="lrow">
+        <div><b>Several employers under one group</b>
+        <span class="note">Separate PAYE references filing their own RTI, with one HR function and one place people sign in. Only one employer may claim the Employment Allowance, and the database enforces it.</span></div>
+        <span class="pill wait">Built, not yet on screen</span>
+      </div>
+      <div class="lrow">
+        <div><b>Many payrolls in parallel</b>
+        <span class="note">Weekly, fortnightly, four-weekly, monthly and quarterly, running alongside each other with their own periods.</span></div>
+        <span class="pill wait">Built, not yet on screen</span>
+      </div>
+      <div class="lrow">
+        <div><b>Timesheets for casual staff</b>
+        <span class="note">Nobody may approve their own hours, and an approved timesheet cannot be edited — a correction goes on a new sheet.</span></div>
+        <span class="pill wait">Built, not yet on screen</span>
+      </div>
+      <div class="lrow">
+        <div><b>RTI submissions</b>
+        <span class="note">Full Payment Submission and Employer Payment Summary as GovTalk XML, with the IRmark, validated against HMRC's own published 2026-27 schemas rather than against our reading of them.</span></div>
+        <span class="pill wait">Built, awaiting recognition</span>
+      </div>
+    </div>
+
+    <div class="sec-head" style="margin-top:40px"><h2 style="font-size:16px">Waiting on somebody else</h2></div>
+    <div class="ledger">
+      <div class="lrow">
+        <div><b>HMRC software recognition</b>
+        <span class="note">Required before any product may file RTI. Registered with HMRC's Software Developer Support Team; the submissions themselves are built and schema-valid.</span></div>
+        <span class="pill hold">In progress</span>
+      </div>
+      <div class="lrow">
+        <div><b>BACS Service User Number</b>
+        <span class="note">Required to instruct payment. Applied for through a sponsoring bank.</span></div>
+        <span class="pill hold">In progress</span>
+      </div>
+    </div>
+
+    <div class="card accent" style="margin-top:34px">
+      <h3>Why we publish it this way</h3>
+      <p>
+        Every supplier's website says the same things, which is why none of them are believed.
+        Splitting this into what you can click, what exists without a screen, and what is
+        waiting on an accreditation body is more useful to you and more uncomfortable for us.
+      </p>
+      <p>
+        The engine is covered by <b>748 automated checks</b>, including twelve consecutive
+        periods reconciling to the correct annual figures, and every RTI document validated
+        against HMRC's published schema. We will show you the test output.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section id="depth">
+  <div class="in reveal">
+    <span class="eyebrow">What sits underneath</span>
+    <h2>The hard cases are the whole job.</h2>
+    <p class="sec-lede">
+      Any system can pay a salaried person on a five-day week. Payroll gets difficult at the
+      edges — the part-timer, the long-term sick, the casual worker, the group with nine PAYE
+      schemes. Those are the cases below, and each one is something systems commonly get wrong.
+    </p>
+
+    <div class="sec-head" style="margin-top:44px"><h2 style="font-size:16px">Occupational sick pay</h2></div>
+    <div class="ledger">
+      <div class="lrow">
+        <div><b>Entitlement is consumed, not reset</b>
+        <span class="note">Measured over the twelve months before the absence starts, so time off in March reduces what is left in October. An absence straddling that boundary is apportioned, not counted whole.</span></div>
+        <span class="pill live">In the demo</span>
+      </div>
+      <div class="lrow">
+        <div><b>Occupational pay is inclusive of statutory, not on top</b>
+        <span class="note">Full pay means normal pay, of which SSP forms part. Paying both is the most common occupational sick pay error, and it produces an overpayment recoverable only by asking the employee to return it.</span></div>
+        <span class="pill live">In the demo</span>
+      </div>
+      <div class="lrow">
+        <div><b>Service is fixed at the start of the absence</b>
+        <span class="note">Passing five years' service mid-absence does not move someone up a band part-way through.</span></div>
+        <span class="pill live">In the demo</span>
+      </div>
+      <div class="lrow">
+        <div><b>The drop to half pay is flagged before it happens</b>
+        <span class="note">The run stops and names the person, so they are told before the payslip arrives rather than after.</span></div>
+        <span class="pill live">In the demo</span>
+      </div>
+    </div>
+
+    <div class="sec-head" style="margin-top:40px"><h2 style="font-size:16px">Leave</h2></div>
+    <div class="ledger">
+      <div class="lrow">
+        <div><b>Held in hours, because a day is not a day</b>
+        <span class="note">Two people on a five-day week, one on 43.75 hours and one on 35, both take "a day" and it costs them different amounts. Holding days and converting at the end is how part-time staff end up short-changed.</span></div>
+        <span class="pill live">In the demo</span>
+      </div>
+      <div class="lrow">
+        <div><b>5.6 weeks capped at 28 days — not 28 days for everyone</b>
+        <span class="note">Somebody working three days a week is entitled to 16.8 days, and the cap never applies to them. An entitlement below the minimum is unlawful, and is raised as such.</span></div>
+        <span class="pill live">In the demo</span>
+      </div>
+      <div class="lrow">
+        <div><b>Irregular hours accrue 12.07% of hours worked</b>
+        <span class="note">Following <i>Harpur Trust v Brazel</i> and the 2024 reforms. Giving a casual worker a fixed annual figure is the specific error that case was about.</span></div>
+        <span class="pill live">In the demo</span>
+      </div>
+      <div class="lrow">
+        <div><b>Carried days are used first, and expire</b>
+        <span class="note">Otherwise an employee loses days they need not have lost, because this year's entitlement was spent while last year's quietly ran out.</span></div>
+        <span class="pill live">In the demo</span>
+      </div>
+    </div>
+
+    <div class="sec-head" style="margin-top:40px"><h2 style="font-size:16px">Groups and awkward structures</h2></div>
+    <div class="ledger">
+      <div class="lrow">
+        <div><b>Many employers, one system</b>
+        <span class="note">A group with nine PAYE references files nine sets of RTI but has one HR function. Two employers cannot share a reference, and only one may claim the Employment Allowance — both enforced by the database.</span></div>
+        <span class="pill wait">Engine and schema</span>
+      </div>
+      <div class="lrow">
+        <div><b>Fifteen payrolls across three frequencies</b>
+        <span class="note">Weekly, monthly and quarterly running in parallel, each with its own periods.</span></div>
+        <span class="pill wait">Engine and schema</span>
+      </div>
+      <div class="lrow">
+        <div><b>Timesheets for casual staff</b>
+        <span class="note">Nobody may approve their own hours, and an approved timesheet cannot be edited — a correction goes on a new sheet.</span></div>
+        <span class="pill wait">Engine and schema</span>
+      </div>
+    </div>
+
+    <div class="sec-head" style="margin-top:40px"><h2 style="font-size:16px">HMRC</h2></div>
+    <div class="ledger">
+      <div class="lrow">
+        <div><b>FPS and EPS validated against HMRC's own schemas</b>
+        <span class="note">Not against our reading of them — against FullPaymentSubmission-2027-v1-0.xsd itself, including the IRmark. Off-payroll workers and CIS deductions suffered are both carried.</span></div>
+        <span class="pill wait">Built, awaiting recognition</span>
+      </div>
+    </div>
+
+    <div class="card accent" style="margin-top:34px">
+      <h3>What "engine and schema" means, and what it does not</h3>
+      <p>
+        Rows marked <b>in the demo</b> can be clicked through in the next two minutes. Rows marked
+        <b>engine and schema</b> are built and covered by automated tests, but there is no screen
+        for them yet — you would be taking our word for it, and we would rather say so than let
+        you find out during an evaluation.
+      </p>
+      <p style="margin-bottom:0">
+        The whole system is covered by <b>over 1,000 automated checks</b>, including every
+        constraint verified by deliberately trying to violate it. We will show you the suite
+        running if that is useful.
       </p>
     </div>
   </div>
@@ -913,9 +1157,30 @@ safely("form", function(){
     btn.disabled = true; btn.textContent = "Sending…";
     try {
       const res = await fetch(FORM_ENDPOINT, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data)
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify(data)
       });
-      if(!res.ok) throw new Error("status " + res.status);
+
+      /* Read the body before deciding. A form handler that refuses usually
+         says why, and "that didn't send" hides the one piece of information
+         needed to fix it. */
+      let detail = "";
+      try {
+        const body = await res.json();
+        if(body && body.errors && body.errors.length){
+          detail = body.errors.map(e => e.message || e.code).join("; ");
+        } else if(body && body.error){
+          detail = body.error;
+        }
+      } catch(e){ /* not JSON */ }
+
+      if(!res.ok){
+        const e = new Error(detail || ("status " + res.status));
+        e.detail = detail;
+        e.status = res.status;
+        throw e;
+      }
       form.querySelectorAll("input,textarea").forEach(el => el.value = "");
       if(window.turnstile) try { window.turnstile.reset(); } catch(e){}
       ok.textContent = "Thanks — we'll reply within one working day.";
@@ -924,7 +1189,16 @@ safely("form", function(){
       ok.classList.add("show");
     } catch(err){
       if(window.turnstile) try { window.turnstile.reset(); } catch(e){}
-      ok.textContent = "That didn't send. Please try again in a moment.";
+      /* A fetch that never reaches the network throws a TypeError with no
+         status — which is what a Content Security Policy block looks like from
+         script. Saying so turns an apparent outage into a five-minute fix. */
+      const blocked = err && !err.status && err.name === "TypeError";
+      ok.textContent = err && err.detail
+        ? "That didn't send: " + err.detail
+        : blocked
+          ? "The browser blocked that request. If you administer this site, check that the form endpoint is allowed in connect-src."
+          : "That didn't send. Please try again in a moment.";
+      if(err) console.error("[form]", err.status || "", err.message);
       ok.style.borderLeftColor = "#C8654F";
       ok.style.background = "#3A1F1B";
       ok.classList.add("show");

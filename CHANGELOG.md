@@ -1,5 +1,58 @@
 # Changelog
 
+## 0.11.3
+
+- **The enquiry form never worked from a browser.** `connect-src` in the
+  security headers allowed Cloudflare Insights but not the form endpoint, so
+  the browser blocked the request before it left the page. The endpoint itself
+  was fine, which is why testing it with curl showed no problem — curl is not
+  subject to a page's Content Security Policy. The bot submissions that did
+  arrive went straight to the endpoint, bypassing the page, which made the form
+  look like it was working.
+- A blocked request now says so. A fetch stopped by policy throws a TypeError
+  with no status and no body, which is indistinguishable from an outage unless
+  the code checks for it.
+
+## 0.11.2
+
+- The enquiry form reported every failure as "That didn't send", which hid the
+  one thing needed to fix it. It now reads the handler's response and shows
+  what was actually refused — a rejected reCAPTCHA, a quota, a domain
+  mismatch — and logs the status to the console.
+
+## 0.11.1
+
+- A proof strip beneath the hero: four things, three of which link straight
+  into the demo where they can be checked in under a minute. The headline is
+  unchanged — it is the proposition, and a list of features would weaken it.
+
+## 0.11.0
+
+Absence and leave are now in the demo, not just in the libraries.
+
+- **New Absence tab** showing schemes, service bands, current absences with
+  the split between full pay, half pay and unpaid, and remaining entitlement
+  per person on a rolling twelve-month window.
+- **Leave tab now shows named schemes**, entitlement per person in hours, and
+  marks a scheme that falls below the statutory minimum.
+- **Absence and leave exceptions now reach the commit gate** alongside the
+  payroll ones. The seeded run raises a drop to half pay, an expiring
+  carry-over, and an unlawful entitlement — all three of which a payroll
+  manager would want to know about before the payslips go out.
+- Landing page gains a **Depth** section separating what can be clicked
+  through today from what is built but has no screen yet.
+
+Fixed:
+
+- `absence.js` and `leave.js` both define `serviceMonthsAt` and
+  `entitlementFor`. Bundled into one scope the second silently overwrote the
+  first, which would have shown up as leave entitlement calculated by the
+  absence rules. Each now has its own namespace.
+- The bundler stripped exports with a pattern that only matched the older
+  `if(typeof module` guard, so the newer libraries kept their `module.exports`
+  and the page failed to load. It now handles both forms and fails loudly
+  rather than shipping a broken bundle.
+
 ## 0.10.0
 
 Named leave schemes. Previously one entitlement sat on the employee record;

@@ -7,6 +7,20 @@ const OUT = path.join(__dirname, "..", "hr-payroll-system.html");
 const engine = fs.readFileSync("engine.js","utf8").replace(/if\(typeof module[\s\S]*$/,"");
 const autom  = fs.readFileSync("automation.js","utf8").replace(/if\(typeof module[\s\S]*$/,"");
 const jrnl   = fs.readFileSync("journal.js","utf8").replace(/if\(typeof module[\s\S]*$/,"");
+/* Some libraries guard their export with `if(typeof module`, others assign
+   `module.exports` directly. Strip either form, and fail loudly if neither
+   matched — a silent miss leaves `module is not defined` at page load. */
+function stripExports(file){
+  const src = fs.readFileSync(file, "utf8");
+  const out = src.replace(/if\(typeof module[\s\S]*$/, "")
+                 .replace(/module\.exports\s*=\s*\{[\s\S]*$/, "");
+  if(out.length === src.length){
+    throw new Error("no export block found in " + file + " — the bundle would not run");
+  }
+  return out;
+}
+const absn   = stripExports("absence.js");
+const lve    = stripExports("leave.js");
 const app    = fs.readFileSync("app.js","utf8");
 const css    = fs.readFileSync("app.css","utf8");
 
@@ -41,6 +55,7 @@ ${css}
       <button class="tab" data-view="employees">People</button>
       <button class="tab" data-view="payroll">Payroll</button>
       <button class="tab" data-view="leave">Leave</button>
+      <button class="tab" data-view="absence">Absence</button>
       <button class="tab" data-view="payslips">Payslips</button>
       <button class="tab" data-view="pensions">Pensions</button>
       <button class="tab" data-view="automation">Automation</button>
@@ -75,6 +90,25 @@ ${engine}
 ${engineExports}
 ${autom}
 ${jrnl}
+
+/* absence.js and leave.js both define serviceMonthsAt and entitlementFor.
+   In one shared scope the second would silently overwrite the first, and the
+   bug would surface as leave entitlement being calculated by the absence
+   rules. Each gets its own namespace instead. */
+var ABSENCE = (function(){
+${absn}
+  return { makeScheme, EXAMPLE_SCHEMES, serviceMonthsAt, bandFor, windowFor,
+    consumedInWindow, entitlementFor, assessAbsence, projectExhaustion,
+    countWorkingDays, dailyRateFor, bradfordFactor, absenceExceptions };
+})();
+
+var LEAVE = (function(){
+${lve}
+  return { makeLeaveScheme, EXAMPLE_SCHEMES, statutoryMinimumDays, hoursPerDay,
+    serviceMonthsAt, partYearFraction, entitlementFor, carryOverFor, balanceFor,
+    allBalancesFor, validateRequest, leaveExceptions, teamClashes,
+    STATUTORY_WEEKS, STATUTORY_DAY_CAP, IRREGULAR_ACCRUAL_RATE };
+})();
 ${app}
 </script>
 </body>
