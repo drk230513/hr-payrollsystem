@@ -1,9 +1,9 @@
-# HR & Payroll System — v0.7.1
+# HR & Payroll System — v0.9.0
 
 Everything in one place. Start with the install script.
 
 ```bash
-tar -xzf hr-payrollsystem-0.7.1.tar.gz
+tar -xzf hr-payrollsystem-0.9.0.tar.gz
 cd hr-payrollsystem
 chmod +x install.sh
 ./install.sh full
@@ -30,6 +30,7 @@ packages/               the calculation libraries and their tests
   automation.js           automation policy, delegation limits, cover mode
   journal.js              payroll to double-entry accounting
   rti.js                  HMRC FPS and EPS as GovTalk XML
+  absence.js              occupational sick pay and enhanced family leave
   test.js atest.js jtest.js
   app.js app.css build.js builds the browser demo
 
@@ -74,6 +75,7 @@ site/                   the public website
 | `server/ssotest.js` | Entra SSO, token validation, tenant binding | 54 |
 | `server/otest.js` | signup, provisioning, invitation, decommission | 67 |
 | `packages/rtest.js` | RTI FPS and EPS, validated against HMRC's schemas | 103 |
+| `packages/abstest.js` | occupational absence, entitlement, rolling windows | 75 |
 | | **total** | **605** |
 
 The database suites need PostgreSQL running:

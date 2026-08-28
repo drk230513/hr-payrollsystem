@@ -1,5 +1,88 @@
 # Changelog
 
+## 0.9.0
+
+Occupational absence, group structure, working patterns and timesheets. Driven
+by a real tender: 9 PAYE schemes, 15 payrolls, 57 absence schemes with 100% of
+staff entitled, and 5 FTE patterns worked as hours per day.
+
+**Occupational absence** (`packages/absence.js`, 75 tests)
+
+Company sick pay and enhanced family leave on top of the statutory minimum.
+Four things it gets right that are commonly got wrong:
+
+- **Entitlement is consumed, not reset.** Measured over a rolling window from
+  the first day of the absence, so time off in March reduces what is available
+  in October. An absence straddling the window edge is apportioned rather than
+  counted whole.
+- **Service is fixed at the start of the absence.** Crossing five years'
+  service mid-absence does not move someone up a band part-way through.
+- **Occupational pay is INCLUSIVE of statutory.** Full pay means normal pay, of
+  which SSP forms part. Paying both is an overpayment, and a scheme configured
+  to pay both raises an exception.
+- **Weeks convert to days using the employee's own pattern**, so a part-timer
+  gets the same weeks and fewer days.
+
+Also: waiting days, non-working days that do not consume entitlement,
+projection of when pay drops to half and then to nil, and the Bradford Factor
+reported rather than acted upon.
+
+**Migration 5** — group structure, verified against PostgreSQL by attempting
+to violate every constraint:
+
+- Many employers in one tenant. A duplicate PAYE reference is refused, and only
+  one employer in a group may claim the Employment Allowance.
+- Named working patterns as hours per day, not start and finish times.
+- Absence schemes with service bands, and absences that cannot overlap for the
+  same person.
+- Imported absence history flagged, so it is never mistaken for something this
+  system calculated.
+- Timesheets for casual staff. Nobody may approve their own, and an approved
+  timesheet cannot be edited — corrections go on a new sheet.
+
+## 0.8.2
+
+- **The P45 View button threw.** It called `openDoc()`, a function that was
+  never defined. Download and Print worked, so the fault was in the handler
+  rather than the document. It now opens in a dialog with its own Download and
+  Print, matching how payslips already behave.
+- **New test: every enabled button on every view is clicked** and the run
+  fails if any throws. 80 buttons across 10 views.
+
+  This is the test that should have existed already. The previous suite checked
+  that views *rendered*, which is why three faults in a row — two dead buttons
+  and an unusable dialog — were found by using the product rather than by
+  running the tests.
+
+## 0.8.1
+
+- **The edit dialog could not be saved, closed or dismissed.** Modal buttons
+  were bound with the same per-element helper used for the rest of the page,
+  which attaches listeners only to elements that exist at that moment. Modal
+  buttons are written in afterwards, so Save, Delete and Close received no
+  listener at all and the only way out was reloading the page. Modal actions
+  are now delegated from document.
+- Escape and clicking the backdrop now close a dialog, so there is no way to
+  become stuck in one.
+- Nine regression tests covering save, delete, close, Escape, backdrop, and
+  surviving a re-render.
+
+## 0.8.0
+
+- **P45 now works.** It was a permanently disabled button labelled "Not due"
+  with nothing behind it — decoration on a legal obligation. A leaver
+  certificates section lists anyone with a leaving date, produces Part 1A once
+  their final pay is committed, and offers view, download and print.
+  Week 1/month 1 leavers correctly report no cumulative total, and the
+  document explains that Part 1 reaches HMRC through the FPS rather than
+  separately.
+- The journal view now has a test marker, so it is covered by the navigation
+  suite like every other view.
+
+Note on hourly pay: it already worked. Payroll → pay elements takes hours and
+a rate, multiplies them, and the hours appear on the payslip against the rate
+as section 8 requires. It is now covered by tests, but no behaviour changed.
+
 ## 0.7.1
 
 - **Site settings moved into `site/config.js`**, which the installer creates

@@ -1021,11 +1021,33 @@ function viewPayslips(){
       <span class="r-sub">Issued after period ${ENGINE.periodsPerYear(S.config)} is committed</span></span>
       <span class="m">—</span><span class="m">—</span>
       <button class="btn sm" ${committed.length >= ENGINE.periodsPerYear(S.config) ? 'data-p60="1"' : "disabled"}>Download</button></div>
-    <div class="prow"><span><b>P45 — Leaver certificate</b>
-      <span class="r-sub">Produced when a leaver's final pay is committed</span></span>
-      <span class="m">—</span><span class="m">—</span>
-      <button class="btn sm" disabled>Not due</button></div>
   </div>
+
+  <div class="sec-head"><h2>Leaver certificates</h2><span class="eyebrow">P45</span></div>
+  ${(() => {
+    const ready = S.employees.filter(e => e.leavingDate &&
+      S.runs.some(r => r.committed && r.payslips.some(p => p.employeeId === e.id)));
+    const pending = S.employees.filter(e => e.leavingDate && !ready.includes(e));
+    if(!ready.length && !pending.length){
+      return `<div class="panelbox"><p style="margin:0;color:var(--ink2)">
+        Nobody has left. A P45 appears here once a leaver's final pay is committed \u2014 the
+        year-to-date figures it carries are not final until then.</p></div>`;
+    }
+    return `<div class="ledger">
+      ${ready.map(e => `<div class="prow">
+        <span><b>${esc(e.name)}</b><span class="r-sub">${esc(e.payrollNumber)} · left ${fmtD(e.leavingDate)}</span></span>
+        <span class="m">—</span><span class="m">—</span>
+        <span class="rowacts">
+          <button class="btn sm primary" data-p45="${e.id}">View</button>
+          <button class="btn sm" data-p45dl="${e.id}">Download</button>
+          <button class="btn sm" data-p45pr="${e.id}">Print</button>
+        </span></div>`).join("")}
+      ${pending.map(e => `<div class="prow muted">
+        <span><b>${esc(e.name)}</b><span class="r-sub">${esc(e.payrollNumber)} · leaves ${fmtD(e.leavingDate)} · final pay not yet committed</span></span>
+        <span class="m">—</span><span class="m">—</span>
+        <button class="btn sm" disabled>Not due</button></div>`).join("")}
+    </div>`;
+  })()}
 
   <div class="gov">
     <span class="eyebrow">What your payslip must show</span>
@@ -1033,6 +1055,91 @@ function viewPayslips(){
     <p>Employer pension and National Insurance are shown for transparency. They are paid by the employer on top of gross pay and are not deducted from it.</p>
   </div>
   ${banner()}`;
+}
+
+/* ============================================================================
+   P45
+   ----------------------------------------------------------------------------
+   Legally required when someone leaves. Parts 1A, 2 and 3 go to the employee;
+   the leaving details on Part 1 reach HMRC through the FPS rather than being
+   sent separately.
+
+   Every figure comes from the committed payslip, which is why it can only be
+   produced after the final pay run is committed — the year-to-date totals are
+   not final until then.
+   ========================================================================== */
+function p45HTML(employeeId){
+  const e = emp(employeeId);
+  if(!e) return "<div class='slip'>Not found.</div>";
+
+  const runs = S.runs.filter(r => r.committed && r.payslips.some(p => p.employeeId === employeeId))
+                     .sort((a,b) => b.period - a.period);
+  if(!runs.length) return "<div class='slip'>No committed pay run for this employee.</div>";
+  const run = runs[0];
+  const ps = run.payslips.find(p => p.employeeId === employeeId);
+  const p = PERIODS[run.period - 1];
+  const tc = ENGINE.parseTaxCode(e.taxCode);
+  const parts = String(e.name || "").trim().split(/\s+/);
+  const surname = parts.pop() || "";
+  const forenames = parts.join(" ");
+
+  return `<div class="slip">
+    <div class="slip-head">
+      <div>
+        <div class="slip-org">P45 — Part 1A</div>
+        <div class="slip-sub">Details of employee leaving work<br>Copy for the employee</div>
+      </div>
+      <div class="slip-meta">
+        ${esc(S.employer.shortName)}<br>
+        PAYE ref <b>${esc(S.employer.payeRef)}</b><br>
+        Issued ${fmtD(todayISO())}
+      </div>
+    </div>
+
+    <div class="slip-id">
+      <div><span>1 Employer PAYE reference</span><b>${esc(S.employer.payeRef)}</b></div>
+      <div><span>2 National Insurance number</span><b>${esc(e.niNumber || "not held")}</b></div>
+      <div><span>3 Surname</span><b>${esc(surname.toUpperCase())}</b></div>
+      <div><span>&nbsp;&nbsp; Forenames</span><b>${esc(forenames)}</b></div>
+      <div><span>4 Leaving date</span><b>${fmtD(e.leavingDate)}</b></div>
+      <div><span>5 Student loan deductions</span><b>${(ps.ytd.studentLoan > 0) ? "Y" : "N"}</b></div>
+      <div><span>6 Tax code at leaving date</span><b>${esc(tc.raw)}</b></div>
+      <div><span>&nbsp;&nbsp; Week 1 / Month 1 basis</span><b>${tc.cumulative ? "No" : "Yes"}</b></div>
+    </div>
+
+    <div class="slip-cols">
+      <div class="slip-col">
+        <h4>7 Total pay and tax</h4>
+        ${tc.cumulative
+          ? `<div class="sl"><span>Total pay to date</span><span>${money(ps.ytd.gross)}</span></div>
+             <div class="sl"><span>Total tax to date</span><span>${money(ps.ytd.tax)}</span></div>`
+          : `<div class="sl"><span>Total pay to date</span><span>Not applicable</span></div>
+             <div class="sl"><span>&nbsp;</span><span>week 1 / month 1 basis</span></div>`}
+        <div class="sl tot"><span>Pay in this employment</span><span>${money(ps.ytd.taxable)}</span></div>
+        <div class="sl tot"><span>Tax in this employment</span><span>${money(ps.ytd.tax)}</span></div>
+      </div>
+      <div class="slip-col">
+        <h4>8 Employee details</h4>
+        <div class="sl"><span>Payroll number</span><span>${esc(e.payrollNumber)}</span></div>
+        <div class="sl"><span>Date of birth</span><span>${fmtD(e.dob)}</span></div>
+        <div class="sl"><span>Final pay period</span><span>${esc(p.label)}</span></div>
+        <div class="sl"><span>Final pay date</span><span>${fmtD(p.payDate)}</span></div>
+      </div>
+    </div>
+
+    <div class="slip-net">
+      <span class="l">Pay in this employment</span>
+      <span class="v">${money(ps.ytd.taxable)}</span>
+    </div>
+
+    <div class="slip-foot">
+      <b>To the employee.</b> Keep Parts 1A, 2 and 3 safe. You will need them to claim a tax
+      refund or benefits, and Parts 2 and 3 go to your next employer. Copies cannot be issued.<br><br>
+      <b>To HMRC.</b> The leaving details on Part 1 are reported through the Full Payment Submission
+      for the period shown, rather than sent separately.<br>
+      <span style="letter-spacing:.08em;text-transform:uppercase;font-family:var(--mono);font-size:9.5px">Powered by Open Source AI Ltd</span>
+    </div>
+  </div>`;
 }
 
 function payslipDocument(title, bodyHTML){
@@ -1842,6 +1949,68 @@ function freqLabel(){ return (ENGINE.PAY_FREQUENCIES[S.config.payFrequency]||{})
    MODAL
    ========================================================================== */
 let modalCtx = null;
+/* ============================================================================
+   MODAL ACTIONS
+   ----------------------------------------------------------------------------
+   Bound once to document, not per render.
+
+   The previous version used the same per-element binding as everything else,
+   which attaches listeners only to elements that exist at that moment. Modal
+   buttons are written into the DOM afterwards, so they never received one —
+   Save, Delete and Close all did nothing, and the dialog could only be escaped
+   by reloading the page.
+
+   Delegation survives any DOM replacement, which is what a dialog needs.
+   ========================================================================== */
+function bindModalActions(){
+  if(window.__modalActionsBound) return;
+  window.__modalActionsBound = true;
+
+  document.addEventListener("click", ev => {
+    const btn = ev.target.closest && ev.target.closest("[data-ma]");
+    if(!btn) return;
+    const e = { currentTarget: btn };
+    const id = e.currentTarget.dataset.ma;
+    if(id === "close") return closeModal();
+    if(id === "print" && modalCtx?.kind === "slip"){
+      const e3 = emp(modalCtx.id);
+      return printHTML("Payslip " + e3.name, `<div class="modal">${payslipHTML(modalCtx.id, modalCtx.period)}</div>`);
+    }
+    if(id === "print") return window.print();
+    if(id === "dl" && modalCtx?.kind === "slip"){
+      const e2 = emp(modalCtx.id);
+      return download("payslip-" + (e2.payrollNumber || modalCtx.id) + "-p" + modalCtx.period + ".html",
+        payslipDocument("Payslip " + e2.name, `<div class="modal">${payslipHTML(modalCtx.id, modalCtx.period)}</div>`),
+        "text/html");
+    }
+    if(id === "saveScheme") return saveScheme();
+    if(id === "delScheme") return deleteScheme();
+    if(id === "saveEmp") return saveEmployee();
+    if(id === "delEmp") return deleteEmployee();
+    if(id === "p45dl" && modalCtx?.kind === "p45"){
+      const x = emp(modalCtx.id);
+      return download("p45-" + (x.payrollNumber || modalCtx.id) + ".html",
+        payslipDocument("P45 " + x.name, `<div class="modal">${p45HTML(modalCtx.id)}</div>`), "text/html");
+    }
+    if(id === "p45print" && modalCtx?.kind === "p45"){
+      const x = emp(modalCtx.id);
+      return printHTML("P45 " + x.name, `<div class="modal">${p45HTML(modalCtx.id)}</div>`);
+    }
+    if(id === "saveEl") return savePayElement();
+
+  });
+
+  // Clicking the backdrop, or pressing Escape, closes the dialog. Without
+  // these the only way out of a stuck modal is a page reload.
+  document.addEventListener("click", ev => {
+    if(ev.target && ev.target.id === "scrim") closeModal();
+  });
+  document.addEventListener("keydown", ev => {
+    if(ev.key === "Escape" && document.getElementById("scrim")
+       && document.getElementById("scrim").classList.contains("show")) closeModal();
+  });
+}
+
 function openModal(label, html, opts = {}){
   document.getElementById("modalLabel").textContent = label;
   document.getElementById("modalBody").innerHTML = html;
@@ -1849,6 +2018,7 @@ function openModal(label, html, opts = {}){
     `<button class="btn sm ${a.primary ? "primary" : ""}" data-ma="${a.id}">${esc(a.label)}</button>`).join("") +
     `<button class="btn sm" data-ma="close">Close</button>`;
   modalCtx = opts.ctx || null;
+  bindModalActions();
   document.getElementById("scrim").classList.add("show");
   document.body.style.overflow = "hidden";
 }
@@ -2051,6 +2221,22 @@ function bind(){
   const sf = document.getElementById("slipEmp");
   if(sf) sf.addEventListener("change", () => { slipFilter = sf.value; render(); });
 
+  on("[data-p45]", "click", e => {
+    const id = e.currentTarget.dataset.p45;
+    openModal("P45 · " + emp(id).name, p45HTML(id),
+      { actions: [{ id:"p45dl", label:"Download" }, { id:"p45print", label:"Print" }],
+        ctx: { kind:"p45", id } });
+  });
+  on("[data-p45dl]", "click", e => {
+    const id = e.currentTarget.dataset.p45dl, x = emp(id);
+    download("p45-" + (x.payrollNumber || id) + ".html",
+      payslipDocument("P45 " + x.name, `<div class="modal">${p45HTML(id)}</div>`), "text/html");
+  });
+  on("[data-p45pr]", "click", e => {
+    const id = e.currentTarget.dataset.p45pr, x = emp(id);
+    printHTML("P45 " + x.name, `<div class="modal">${p45HTML(id)}</div>`);
+  });
+
   on("[data-slipdl]", "click", e => {
     const [id, period] = e.currentTarget.dataset.slipdl.split("|");
     const e2 = emp(id);
@@ -2156,27 +2342,8 @@ function bind(){
     });
   });
 
-  // --- modal ---
-  on("[data-ma]", "click", e => {
-    const id = e.currentTarget.dataset.ma;
-    if(id === "close") return closeModal();
-    if(id === "print" && modalCtx?.kind === "slip"){
-      const e3 = emp(modalCtx.id);
-      return printHTML("Payslip " + e3.name, `<div class="modal">${payslipHTML(modalCtx.id, modalCtx.period)}</div>`);
-    }
-    if(id === "print") return window.print();
-    if(id === "dl" && modalCtx?.kind === "slip"){
-      const e2 = emp(modalCtx.id);
-      return download("payslip-" + (e2.payrollNumber || modalCtx.id) + "-p" + modalCtx.period + ".html",
-        payslipDocument("Payslip " + e2.name, `<div class="modal">${payslipHTML(modalCtx.id, modalCtx.period)}</div>`),
-        "text/html");
-    }
-    if(id === "saveScheme") return saveScheme();
-    if(id === "delScheme") return deleteScheme();
-    if(id === "saveEmp") return saveEmployee();
-    if(id === "delEmp") return deleteEmployee();
-    if(id === "saveEl") return savePayElement();
-  });
+  // Modal actions are delegated from document — see bindModalActions().
+
 }
 
 /* ---------- employee editing ---------------------------------------------- */

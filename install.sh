@@ -173,7 +173,7 @@ run_tests() {
   command -v node >/dev/null 2>&1 || die "node is required to run tests"
   local total=0 failed=0
 
-  for t in test atest jtest rtest; do
+  for t in test atest jtest rtest abstest; do
     printf '    %-22s' "$t"
     if out=$(cd "$ROOT/packages" && node "$t.js" 2>&1); then
       local n; n=$(echo "$out" | grep -oE '^  [0-9]+ passed' | grep -oE '[0-9]+' | head -1)
