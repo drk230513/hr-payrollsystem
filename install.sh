@@ -183,7 +183,7 @@ run_tests() {
     fi
   fi
 
-  for t in test atest jtest rtest abstest itest; do
+  for t in test atest jtest rtest abstest lvtest itest; do
     printf '    %-22s' "$t"
     if out=$(cd "$ROOT/packages" && node "$t.js" 2>&1); then
       local n; n=$(echo "$out" | grep -oE '^  [0-9]+ passed' | grep -oE '[0-9]+' | head -1)

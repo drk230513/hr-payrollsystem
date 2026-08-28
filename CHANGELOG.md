@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.10.0
+
+Named leave schemes. Previously one entitlement sat on the employee record;
+a large employer runs dozens, and Sovini has 46.
+
+**`packages/leave.js`, 92 tests**
+
+- Named schemes, assignable per employee, each with its own entitlement,
+  accrual, carry-over and bank holiday treatment. Verified with all 46 at once.
+- **The statutory minimum is 5.6 weeks capped at 28 days**, not 28 days for
+  everyone. Three days a week is 16.8 days, and the cap never applies.
+- **Irregular hours accrue at 12.07% of hours worked**, following
+  *Harpur Trust v Brazel* and the 2024 reforms. Giving a casual worker a fixed
+  annual figure is the error that case was about.
+- **Carry-over expires, and carried hours are consumed first**, so an employee
+  does not lose days they need not have lost.
+- Long service increments, measured at the start of the leave year.
+- Pro rata for starters and leavers, monthly accrual, minimum notice,
+  maximum consecutive days, and team clash detection.
+- A scheme below the statutory minimum raises a high-severity exception saying
+  plainly that it is unlawful — but only for schemes that count toward it, so
+  a two-day volunteering scheme is not wrongly flagged.
+
+**Migration 6**, verified by attempting to violate every constraint:
+
+- A scheme with no entitlement is refused unless it accrues on hours worked.
+- Carry-over is recorded per employee per scheme per year, once.
+- A scheme with requests against it cannot be deleted, only deactivated —
+  deleting it would orphan the history.
+
+Everything is held in hours. Someone on 43.75 hours and someone on 35 hours
+both take "a day", and it costs them different amounts; holding days and
+converting at the end is how part-time staff end up short-changed.
+
 ## 0.9.2
 
 - `itest.js` needs jsdom, which was never declared as a dependency anywhere —
