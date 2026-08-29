@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.4
+
+- Enquiry form question changed to "Where does your current system let you
+  down?". The field name is unchanged, so existing submissions still map.
+
 ## 0.11.3
 
 - **The enquiry form never worked from a browser.** `connect-src` in the
