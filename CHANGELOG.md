@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.5
+
+- Occupational sick pay and named leave schemes were still listed as "built,
+  not yet on screen" after both were wired into the demo. Understating what
+  works is a smaller error than overstating it, but it is still wrong, and on
+  a page whose whole argument is that its claims are checkable it matters
+  more than usual. Both now read Live.
+
 ## 0.11.4
 
 - Enquiry form question changed to "Where does your current system let you
