@@ -59,7 +59,7 @@ ok("localStorage persisted state", !!w.localStorage.getItem("hrp:state"));
 
 console.log("\n--- navigation ---");
 const tabs = [...d.querySelectorAll(".tab")];
-eq("all views have tabs", tabs.length, 11);
+eq("all views have tabs", tabs.length, 12);
 
 // Marker-based, not length-based. `el.innerHTML = view()` leaves the PREVIOUS
 // view in place when view() throws, so a length check passes on a broken screen.
@@ -67,7 +67,7 @@ const MARKERS = {
   dashboard:"Next steps", employees:"All employees", payroll:"Pay period",
   leave:"Request time off", payslips:"Pay documents", pensions:"Contribution comparison",
   automation:"How much runs itself", integrations:"Real Time Information", settings:"Organisation",
-  absence:"Occupational pay",
+  absence:"Occupational pay", group:"Employers, payrolls and timesheets",
   // Present whether or not a run has been committed, so it tests rendering
   // rather than the presence of data.
   journal:"Accounting entries"
@@ -592,6 +592,51 @@ eq("the amount is calculated from hours and rate", amt.value, "180.00");
 rate.value = "15.00"; rate.dispatchEvent(new w.Event("input",{bubbles:true}));
 eq("and recalculates when the rate changes", amt.value, "187.50");
 
+console.log("\n--- the group: employers, payrolls, timesheets ---");
+w.S = w.seedState("private"); w.save();
+const alerts = []; w.alert = m => alerts.push(m);
+d.querySelector('[data-view="group"]').dispatchEvent(new w.Event("click",{bubbles:true}));
+let gtext = d.getElementById("app").textContent.replace(/\s+/g," ");
+ok("the group view renders", !gtext.includes("Something went wrong"));
+
+eq("three employers", w.S.employers.length, 3);
+ok("each with a distinct PAYE reference",
+   new Set(w.S.employers.map(x => x.payeOfficeNo + "/" + x.payeRef)).size === 3);
+eq("exactly one claims the Employment Allowance",
+   w.S.employers.filter(x => x.claimsEmploymentAllowance).length, 1);
+ok("and the page says so", gtext.includes("One Employment Allowance claim"));
+
+eq("five payrolls", w.S.schedules.length, 5);
+eq("across three frequencies", new Set(w.S.schedules.map(s => s.frequency)).size, 3);
+ok("weekly, monthly and quarterly all present",
+   ["weekly","monthly","quarterly"].every(f => w.S.schedules.some(s => s.frequency === f)));
+ok("periods a year differ by frequency",
+   gtext.includes("52") && gtext.includes("12") && gtext.includes("4"));
+
+ok("every employee has an employer", w.S.employees.every(e => !!e.employerId));
+ok("and a payroll", w.S.employees.every(e => !!e.scheduleId));
+
+console.log("\n--- nobody may approve their own hours ---");
+const sheet = w.S.timesheets.find(x => x.status === "submitted");
+ok("a timesheet is awaiting approval", !!sheet);
+d.getElementById("tsApprover").value = sheet.submittedBy;
+d.querySelector("[data-tsapprove]").dispatchEvent(new w.Event("click",{bubbles:true}));
+ok("self-approval is refused", alerts.some(m => m.includes("cannot approve your own")));
+eq("and the sheet is untouched",
+   w.S.timesheets.find(x => x.id === sheet.id).status, "submitted");
+
+d.getElementById("tsApprover").value = "someone.else@northgate.example";
+d.querySelector("[data-tsapprove]").dispatchEvent(new w.Event("click",{bubbles:true}));
+eq("somebody else may approve it",
+   w.S.timesheets.find(x => x.id === sheet.id).status, "approved");
+eq("and the approver is recorded",
+   w.S.timesheets.find(x => x.id === sheet.id).approvedBy, "someone.else@northgate.example");
+
+gtext = d.getElementById("app").textContent.replace(/\s+/g," ");
+ok("an approved sheet is shown as locked", gtext.includes("approved"));
+eq("with no further action offered on it",
+   d.querySelectorAll("[data-tsapprove]").length, 0);
+
 console.log("\n--- occupational absence in the demo ---");
 w.S = w.seedState("private"); w.save();
 d.querySelector('[data-view="absence"]').dispatchEvent(new w.Event("click",{bubbles:true}));
@@ -659,7 +704,7 @@ w.URL.revokeObjectURL = () => {};
 w.HTMLAnchorElement.prototype.click = function(){};
 w.open = () => ({ document:{ write(){}, close(){} }, focus(){}, print(){}, close(){} });
 
-const auditViews = ["dashboard","employees","payroll","leave","absence","payslips",
+const auditViews = ["dashboard","employees","group","payroll","leave","absence","payslips",
                     "pensions","automation","journal","integrations","settings"];
 let clicked = 0;
 const brokenButtons = [];

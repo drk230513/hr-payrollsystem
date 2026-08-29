@@ -177,6 +177,13 @@ function seedState(preset = "private"){
          annualSalary:29900, leavingDate:"2026-07-31", bankSort:"23-05-80", bankAccount:"14778290" })
   ];
 
+  // Spread people across the group so the screens show something real.
+  people.forEach((e, i) => {
+    e.employerId = i === 0 || i === 8 ? "EMP-HOLD" : i === 6 ? "EMP-FM" : "EMP-LOG";
+    e.scheduleId = i === 0 ? "SCH-Q-DIR" : i === 6 ? "SCH-W-CAS"
+                 : i === 8 ? "SCH-M-HEAD" : i % 4 === 1 ? "SCH-W-DRV" : "SCH-M-OPS";
+  });
+
   const cfg = JSON.parse(JSON.stringify(ENGINE.DEFAULT_CONFIG));
   cfg.payFrequency = P.payFrequency;
 
@@ -222,6 +229,54 @@ function seedState(preset = "private"){
     leaveCarriedIn: { [people[1].id]: { "AL-STD": { hours: 22.5, expiresOn: "2026-09-15" } } },
     hoursWorkedInYear: { [people[6].id]: 512 },
 
+    /* A group: several legal entities, each with its own PAYE reference and
+       its own RTI, sharing one HR function. */
+    employers: [
+      { id:"EMP-HOLD", code:"NG-HOLD", name:"Northgate Group Ltd",
+        payeOfficeNo:"120", payeRef:"NG88214", aoRef:"120PA00456789",
+        claimsEmploymentAllowance:true },
+      { id:"EMP-LOG",  code:"NG-LOG",  name:"Northgate Logistics Ltd",
+        payeOfficeNo:"120", payeRef:"NG88215", aoRef:"120PA00456790",
+        claimsEmploymentAllowance:false },
+      { id:"EMP-FM",   code:"NG-FM",   name:"Northgate Facilities Ltd",
+        payeOfficeNo:"120", payeRef:"NG88216", aoRef:"120PA00456791",
+        claimsEmploymentAllowance:false }
+    ],
+
+    /* Several payrolls running alongside each other, each with its own
+       frequency and its own periods. */
+    schedules: [
+      { id:"SCH-M-HEAD", code:"M-HEAD", name:"Monthly — head office",
+        employerId:"EMP-HOLD", frequency:"monthly", weekStartsOn:1, payDay:28 },
+      { id:"SCH-M-OPS",  code:"M-OPS",  name:"Monthly — operations",
+        employerId:"EMP-LOG",  frequency:"monthly", weekStartsOn:1, payDay:28 },
+      { id:"SCH-W-DRV",  code:"W-DRV",  name:"Weekly — drivers",
+        employerId:"EMP-LOG",  frequency:"weekly", weekStartsOn:1, payDay:5 },
+      { id:"SCH-W-CAS",  code:"W-CAS",  name:"Weekly — casual",
+        employerId:"EMP-FM",   frequency:"weekly", weekStartsOn:1, payDay:5 },
+      { id:"SCH-Q-DIR",  code:"Q-DIR",  name:"Quarterly — directors",
+        employerId:"EMP-HOLD", frequency:"quarterly", weekStartsOn:1, payDay:28 }
+    ],
+
+    /* Casual staff submit hours; somebody else approves them. */
+    timesheets: [
+      { id:"TS-1", employeeId: people[6].id, weekStarting:"2026-08-17",
+        status:"approved", submittedBy:"o.fletcher@northgate.example",
+        approvedBy:"a.okafor@northgate.example",
+        lines:[
+          { workedOn:"2026-08-17", hours:7.5, rate:14.40 },
+          { workedOn:"2026-08-19", hours:6.0, rate:14.40 },
+          { workedOn:"2026-08-21", hours:8.0, rate:14.40 }
+        ] },
+      { id:"TS-2", employeeId: people[6].id, weekStarting:"2026-08-24",
+        status:"submitted", submittedBy:"o.fletcher@northgate.example",
+        approvedBy:null,
+        lines:[
+          { workedOn:"2026-08-24", hours:7.5, rate:14.40 },
+          { workedOn:"2026-08-26", hours:7.5, rate:14.40 }
+        ] }
+    ],
+
     /* Occupational sick pay on top of SSP, with service bands. */
     absenceSchemes: [
       ABSENCE.makeScheme({ id:"OSP", name:"Occupational sick pay", kind:"sickness",
@@ -260,7 +315,7 @@ function seedState(preset = "private"){
    Saved data from an earlier version is missing fields the current code
    expects. Upgrade it in place rather than crashing or silently wiping it.
 ------------------------------------------------------------------------- */
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 function migrate(old){
   if(!old || typeof old !== "object" || !Array.isArray(old.employees)) return null;
@@ -509,7 +564,7 @@ function render(){
   const views = {
     dashboard: viewDashboard, employees: viewEmployees, payroll: viewPayroll,
     leave: viewLeave, payslips: viewPayslips, pensions: viewPensions,
-    absence: viewAbsence, automation: viewAutomation, journal: viewJournal,
+    group: viewGroup, absence: viewAbsence, automation: viewAutomation, journal: viewJournal,
     integrations: viewIntegrations, settings: viewSettings
   };
   try {
@@ -1484,6 +1539,154 @@ function reverseLogEntry(id){
 
 
 
+
+
+/* ============================================================================
+   GROUP — employers, payrolls and timesheets
+   ----------------------------------------------------------------------------
+   A group files RTI per employer but runs one HR function. The rules enforced
+   here are the same ones the database enforces: two employers cannot share a
+   PAYE reference, only one may claim the Employment Allowance, and nobody may
+   approve their own hours.
+   ========================================================================== */
+function employerOf(e){ return (S.employers || []).find(x => x.id === e.employerId) || null; }
+function scheduleOf(e){ return (S.schedules || []).find(x => x.id === e.scheduleId) || null; }
+
+const FREQ_LABEL = { weekly:"Weekly", fortnightly:"Fortnightly", fourWeekly:"Four-weekly",
+                     monthly:"Monthly", quarterly:"Quarterly" };
+
+function timesheetHours(ts){
+  return (ts.lines || []).reduce((s,l) => s + Number(l.hours || 0), 0);
+}
+function timesheetValue(ts){
+  return (ts.lines || []).reduce((s,l) => s + Number(l.hours || 0) * Number(l.rate || 0), 0);
+}
+
+function viewGroup(){
+  const employers = S.employers || [];
+  const schedules = S.schedules || [];
+  const timesheets = S.timesheets || [];
+  const people = activeEmployees();
+
+  const eaClaims = employers.filter(x => x.claimsEmploymentAllowance).length;
+  const pending = timesheets.filter(t => t.status === "submitted");
+
+  return `
+  ${mast("Group", "Employers, payrolls and timesheets", [
+    ["Employers", String(employers.length)],
+    ["Payrolls", String(schedules.length)],
+    ["Timesheets to approve", String(pending.length)]
+  ])}
+
+  <div class="sec-head"><h2>Employers</h2>
+    <span class="eyebrow">Each files its own RTI</span></div>
+  <div class="ledger">
+    <div class="lrow head"><span>Employer</span><span>PAYE reference</span><span>Accounts Office</span><span>On payroll</span><span></span></div>
+    ${employers.map(x => {
+      const n = people.filter(e => e.employerId === x.id).length;
+      return `<div class="lrow">
+        <div><b>${esc(x.name)}</b><span class="note">${esc(x.code)}</span></div>
+        <span class="m">${esc(x.payeOfficeNo)}/${esc(x.payeRef)}</span>
+        <span class="m">${esc(x.aoRef)}</span>
+        <span class="m">${n}</span>
+        <span>${x.claimsEmploymentAllowance
+          ? '<span class="status st-approved">claims allowance</span>' : ""}</span>
+      </div>`;
+    }).join("")}
+  </div>
+
+  <div class="flag ${eaClaims === 1 ? "ok" : "bad"}" style="margin-top:14px">
+    ${eaClaims === 1
+      ? "<b>One Employment Allowance claim across the group.</b> Connected companies may only claim it once, and a second claim is refused rather than quietly accepted."
+      : "<b>" + eaClaims + " employers are claiming the Employment Allowance.</b> Connected companies may only claim it once."}
+  </div>
+
+  <div class="sec-head" style="margin-top:34px"><h2>Payrolls running in parallel</h2>
+    <span class="eyebrow">${schedules.length} schedules, ${new Set(schedules.map(s=>s.frequency)).size} frequencies</span></div>
+  <div class="ledger">
+    <div class="lrow head"><span>Payroll</span><span>Employer</span><span>Frequency</span><span>Periods a year</span><span>On it</span></div>
+    ${schedules.map(s => {
+      const employer = employers.find(x => x.id === s.employerId);
+      const n = people.filter(e => e.scheduleId === s.id).length;
+      let per = 12;
+      safely("periods", () => { per = ENGINE.periodsPerYear({ ...S.config, payFrequency: s.frequency }); });
+      return `<div class="lrow">
+        <div><b>${esc(s.name)}</b><span class="note">${esc(s.code)} · week starts ${
+          ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][s.weekStartsOn]}</span></div>
+        <span class="m">${esc(employer ? employer.name : "—")}</span>
+        <span class="m">${esc(FREQ_LABEL[s.frequency] || s.frequency)}</span>
+        <span class="m">${per}</span>
+        <span class="m">${n}</span>
+      </div>`;
+    }).join("")}
+  </div>
+
+  <div class="sec-head" style="margin-top:34px"><h2>Who is on which payroll</h2></div>
+  <div class="ledger">
+    <div class="lrow head"><span>Employee</span><span>Employer</span><span>Payroll</span><span></span><span></span></div>
+    ${people.map(e => {
+      const x = employerOf(e), s = scheduleOf(e);
+      return `<div class="lrow">
+        <div><b>${esc(e.name)}</b><span class="note">${esc(e.jobTitle || "")}</span></div>
+        <span class="m">${esc(x ? x.name : "unassigned")}</span>
+        <span class="m">${esc(s ? s.name : "unassigned")}</span>
+        <span></span>
+        <span>${!x || !s ? '<span class="status st-pending">needs assigning</span>' : ""}</span>
+      </div>`;
+    }).join("")}
+  </div>
+
+  <div class="sec-head" style="margin-top:34px"><h2>Timesheets</h2>
+    <span class="eyebrow">Casual and as-and-when staff</span></div>
+  ${!timesheets.length ? `<div class="panelbox"><p style="margin:0;color:var(--ink2)">No timesheets submitted.</p></div>` : `
+  <div class="ledger">
+    <div class="lrow head"><span>Employee</span><span>Week starting</span><span>Hours</span><span>Value</span><span></span></div>
+    ${timesheets.map(ts => {
+      const e = emp(ts.employeeId);
+      return `<div class="prow">
+        <span><b>${esc(e ? e.name : "unknown")}</b><span class="r-sub">${
+          (ts.lines||[]).length} day${(ts.lines||[]).length===1?"":"s"}${
+          ts.submittedBy ? " · submitted by " + esc(ts.submittedBy) : ""}${
+          ts.approvedBy ? " · approved by " + esc(ts.approvedBy) : ""}</span></span>
+        <span class="m">${fmtD(ts.weekStarting)}</span>
+        <span class="m">${timesheetHours(ts).toFixed(2)}</span>
+        <span class="m">${money(timesheetValue(ts))}</span>
+        <span class="rowacts">${
+          ts.status === "submitted"
+            ? `<button class="btn sm primary" data-tsapprove="${ts.id}">Approve</button>
+               <button class="btn sm" data-tsreject="${ts.id}">Reject</button>`
+            : ts.status === "approved"
+              ? '<span class="status st-approved">approved · locked</span>'
+              : ts.status === "rejected"
+                ? '<span class="status st-pending">rejected</span>'
+                : '<span class="status st-pending">draft</span>'}</span>
+      </div>`;
+    }).join("")}
+  </div>`}
+
+  <div class="panelbox" style="margin-top:18px">
+    <h3 style="margin:0 0 10px;font-family:var(--cond);font-size:15px;letter-spacing:.05em;text-transform:uppercase">Approving as</h3>
+    <div class="frow">
+      <div class="field"><label>Your email</label>
+        <input id="tsApprover" value="${esc(S.approverEmail || "a.okafor@northgate.example")}"></div>
+    </div>
+    <p style="margin:12px 0 0;font-size:13px;color:var(--ink2)">
+      Change this to the submitter's address and try approving their sheet. It will refuse —
+      nobody may approve their own hours.</p>
+  </div>
+
+  <div class="gov">
+    <span class="eyebrow">Why these rules are in the database, not the screen</span>
+    <p><strong>Two employers cannot share a PAYE reference.</strong> RTI would be filed against
+    the wrong scheme and the figures would never reconcile.</p>
+    <p><strong>Only one employer in a group may claim the Employment Allowance.</strong> A second
+    claim is refused outright rather than corrected later by HMRC.</p>
+    <p><strong>An approved timesheet cannot be edited.</strong> It is evidence of hours worked.
+    A correction goes on a new sheet, in the same way a committed payslip is superseded rather
+    than altered.</p>
+  </div>
+  ${banner()}`;
+}
 
 /* ============================================================================
    ABSENCE
@@ -2499,6 +2702,28 @@ function bind(){
   on("[data-undoact]", "click", e => reverseLogEntry(e.currentTarget.dataset.undoact));
   const sf = document.getElementById("slipEmp");
   if(sf) sf.addEventListener("change", () => { slipFilter = sf.value; render(); });
+
+  const tsIn = document.getElementById("tsApprover");
+  if(tsIn) tsIn.addEventListener("change", () => { S.approverEmail = tsIn.value.trim(); save(); });
+
+  on("[data-tsapprove]", "click", e => {
+    const ts = (S.timesheets || []).find(t => t.id === e.currentTarget.dataset.tsapprove);
+    if(!ts) return;
+    const approver = (document.getElementById("tsApprover")?.value || "").trim();
+    if(!approver) return alert("Enter the approver's email first.");
+    // The same rule the database enforces: nobody may approve their own hours.
+    if(approver.toLowerCase() === String(ts.submittedBy || "").toLowerCase()){
+      return alert("You cannot approve your own timesheet. Somebody else has to.");
+    }
+    ts.status = "approved"; ts.approvedBy = approver; ts.approvedAt = new Date().toISOString();
+    save(); render();
+  });
+
+  on("[data-tsreject]", "click", e => {
+    const ts = (S.timesheets || []).find(t => t.id === e.currentTarget.dataset.tsreject);
+    if(!ts) return;
+    ts.status = "rejected"; save(); render();
+  });
 
   on("[data-p45]", "click", e => {
     const id = e.currentTarget.dataset.p45;

@@ -53,6 +53,7 @@ ${css}
     <div class="tabs">
       <button class="tab on" data-view="dashboard">Overview</button>
       <button class="tab" data-view="employees">People</button>
+      <button class="tab" data-view="group">Group</button>
       <button class="tab" data-view="payroll">Payroll</button>
       <button class="tab" data-view="leave">Leave</button>
       <button class="tab" data-view="absence">Absence</button>

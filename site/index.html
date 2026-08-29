@@ -154,8 +154,8 @@ h3{font-family:var(--cond);font-weight:700;font-size:17px;letter-spacing:.03em;m
 .modestats b{display:block;font-family:var(--mono);font-size:26px;font-weight:500;line-height:1}
 .modestats span{display:block;font-size:12.5px;color:var(--ink2);margin-top:5px}
 .modelist{list-style:none;margin:22px 0 0;padding:0;font-size:14.5px;color:var(--ink2)}
-.modelist li{padding:7px 0 7px 26px;position:relative;border-top:1px solid var(--rule)}
-.modelist li:before{position:absolute;left:0;font-weight:600;font-family:var(--mono);font-size:12px}
+.modelist li{padding:7px 0 7px 44px;position:relative;border-top:1px solid var(--rule)}
+.modelist li:before{position:absolute;left:0;width:38px;text-align:left;font-weight:600;font-family:var(--mono);font-size:12px;white-space:nowrap}
 .modelist li.auto:before{content:"AUTO";color:var(--go);font-size:9px;letter-spacing:.08em;top:11px}
 .modelist li.stop:before{content:"STOP";color:var(--high);font-size:9px;letter-spacing:.08em;top:11px}
 .modelist li.click:before{content:"1 TAP";color:var(--med);font-size:9px;letter-spacing:.08em;top:11px}
@@ -487,26 +487,26 @@ footer{background:var(--card);border-top:1px solid var(--rule);padding:44px 0 52
         <span class="note">Several schemes, each with its own accrual, carry-over and bank holiday treatment. Held in hours, so 43.75 and 35 hours are not the same day. Irregular hours accrue at 12.07% following <i>Harpur Trust v Brazel</i>.</span></div>
         <span class="pill live">Live</span>
       </div>
-    </div>
-
-    <div class="sec-head" style="margin-top:40px"><h2 style="font-size:16px">Engine complete and tested — no screen yet</h2></div>
-    <div class="ledger">
-            <div class="lrow">
+      <div class="lrow">
         <div><b>Several employers under one group</b>
-        <span class="note">Separate PAYE references filing their own RTI, with one HR function and one place people sign in. Only one employer may claim the Employment Allowance, and the database enforces it.</span></div>
-        <span class="pill wait">Built, not yet on screen</span>
+        <span class="note">Separate PAYE references filing their own RTI, with one HR function and one place people sign in. Only one employer may claim the Employment Allowance, and a second claim is refused rather than corrected later.</span></div>
+        <span class="pill live">Live</span>
       </div>
       <div class="lrow">
         <div><b>Many payrolls in parallel</b>
-        <span class="note">Weekly, fortnightly, four-weekly, monthly and quarterly, running alongside each other with their own periods.</span></div>
-        <span class="pill wait">Built, not yet on screen</span>
+        <span class="note">Weekly, fortnightly, four-weekly, monthly and quarterly running alongside each other, each with its own periods and its own employer.</span></div>
+        <span class="pill live">Live</span>
       </div>
       <div class="lrow">
         <div><b>Timesheets for casual staff</b>
-        <span class="note">Nobody may approve their own hours, and an approved timesheet cannot be edited — a correction goes on a new sheet.</span></div>
-        <span class="pill wait">Built, not yet on screen</span>
+        <span class="note">Hours submitted, then approved by somebody else — try approving your own and it will refuse. An approved timesheet cannot be edited; a correction goes on a new sheet.</span></div>
+        <span class="pill live">Live</span>
       </div>
-      <div class="lrow">
+    </div>
+
+    <div class="sec-head" style="margin-top:40px"><h2 style="font-size:16px">Built, and waiting on somebody else</h2></div>
+    <div class="ledger">
+                              <div class="lrow">
         <div><b>RTI submissions</b>
         <span class="note">Full Payment Submission and Employer Payment Summary as GovTalk XML, with the IRmark, validated against HMRC's own published 2026-27 schemas rather than against our reading of them.</span></div>
         <span class="pill wait">Built, awaiting recognition</span>
@@ -606,17 +606,17 @@ footer{background:var(--card);border-top:1px solid var(--rule);padding:44px 0 52
       <div class="lrow">
         <div><b>Many employers, one system</b>
         <span class="note">A group with nine PAYE references files nine sets of RTI but has one HR function. Two employers cannot share a reference, and only one may claim the Employment Allowance — both enforced by the database.</span></div>
-        <span class="pill wait">Engine and schema</span>
+        <span class="pill live">In the demo</span>
       </div>
       <div class="lrow">
         <div><b>Fifteen payrolls across three frequencies</b>
         <span class="note">Weekly, monthly and quarterly running in parallel, each with its own periods.</span></div>
-        <span class="pill wait">Engine and schema</span>
+        <span class="pill live">In the demo</span>
       </div>
       <div class="lrow">
         <div><b>Timesheets for casual staff</b>
         <span class="note">Nobody may approve their own hours, and an approved timesheet cannot be edited — a correction goes on a new sheet.</span></div>
-        <span class="pill wait">Engine and schema</span>
+        <span class="pill live">In the demo</span>
       </div>
     </div>
 
@@ -630,12 +630,16 @@ footer{background:var(--card);border-top:1px solid var(--rule);padding:44px 0 52
     </div>
 
     <div class="card accent" style="margin-top:34px">
-      <h3>What "engine and schema" means, and what it does not</h3>
+      <h3>Every row above can be clicked</h3>
       <p>
-        Rows marked <b>in the demo</b> can be clicked through in the next two minutes. Rows marked
-        <b>engine and schema</b> are built and covered by automated tests, but there is no screen
-        for them yet — you would be taking our word for it, and we would rather say so than let
-        you find out during an evaluation.
+        Not described — clicked. Open the demo and try to approve your own timesheet, or commit a
+        run with an exception still open, or find a part-timer whose leave has been rounded to
+        days. Each one refuses, and you can see it refuse in about a minute.
+      </p>
+      <p>
+        The one thing on this page you cannot check yourself is RTI submission, because that
+        needs HMRC recognition rather than more code. We would rather say so here than have you
+        find out during an evaluation.
       </p>
       <p style="margin-bottom:0">
         The whole system is covered by <b>over 1,000 automated checks</b>, including every

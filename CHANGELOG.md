@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.12.1
+
+- The "1 TAP" labels in the automation mode list overlapped the text beside
+  them. The list reserved 26px of gutter, which fits "AUTO" and "STOP" but not
+  a five-character label once letter-spacing is applied. The gutter is now
+  44px with the label boxed at 38px, so there is clearance for a longer label
+  rather than a value that happens to fit the current ones.
+
+## 0.12.0
+
+Everything that was "built, not yet on screen" now has a screen.
+
+**New Group tab** covering the three that were missing:
+
+- **Employers.** Three legal entities, each with its own PAYE reference and
+  Accounts Office reference, each filing its own RTI. Exactly one claims the
+  Employment Allowance, and the page says so.
+- **Payrolls in parallel.** Five schedules across weekly, monthly and
+  quarterly, each tied to an employer, each with its own periods a year, and a
+  list of who is on which.
+- **Timesheets.** Hours submitted and approved. Change the approver to the
+  submitter's address and the approval is refused — the same rule the database
+  enforces, visible in the interface.
+
+The landing page no longer has a "no screen yet" section. RTI is the only
+remaining item a visitor cannot check for themselves, and it is waiting on
+HMRC recognition rather than on code.
+
 ## 0.11.5
 
 - Occupational sick pay and named leave schemes were still listed as "built,
